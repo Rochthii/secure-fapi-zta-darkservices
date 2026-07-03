@@ -3,7 +3,7 @@
 
 > **Project:** secure-fapi-zta-darkservices
 > **Classification:** Enterprise Architecture Design Document
-> **Status:** Architecture Phase — NO IMPLEMENTATION
+> **Status:** Architecture & Design Phase
 > **Created:** 2026-07-03
 > **Author Role:** Principal Security Architect / Zero Trust Architect
 
@@ -17,7 +17,7 @@
 | **PART 2** | [Problem Statement](./02_PROBLEM_STATEMENT.md) | ✅ |
 | **PART 3** | [Literature Review](./03_LITERATURE_REVIEW.md) | ✅ |
 | **PART 4** | [Requirement Analysis](./04_REQUIREMENT_ANALYSIS.md) | ✅ |
-| **PART 5** | [Threat Modeling](./05_THREAT_MODELING.md) | ✅ |
+| **PART 5** | [Security Threat Modeling](./security/threat-model.md) | ⏳ Designing |
 | **PART 6** | [Technology Selection Matrix](./06_TECHNOLOGY_SELECTION.md) | ✅ |
 | **PART 7** | [Target Architecture](./07_TARGET_ARCHITECTURE.md) | ✅ |
 | **PART 8** | [Identity & Access Architecture](./08_IDENTITY_ACCESS.md) | ✅ |
@@ -29,6 +29,8 @@
 | **PART 14** | [Project Structure](./14_PROJECT_STRUCTURE.md) | ✅ |
 | **PART 15** | [Validation & Benchmark](./15_VALIDATION_BENCHMARK.md) | ✅ |
 | **PART 16** | [Final Master Plan](./16_FINAL_MASTER_PLAN.md) | ✅ |
+| **PART 17** | [Sequence Diagrams](./diagrams/sequence_flows.md) | ⏳ Designing |
+| **PART 18** | [Architecture Decision Records (ADRs)](./adr/ADR-INDEX.md) | ⏳ Designing |
 
 ---
 
@@ -47,4 +49,4 @@
 
 ---
 
-> **RULE:** No source code shall be written until ALL 16 documents are reviewed and approved.
+> **RULE:** No further code implementation shall occur until all Giai đoạn 2.5 design docs (Threat Model, ADRs, and Sequence Diagrams) are completed and approved.

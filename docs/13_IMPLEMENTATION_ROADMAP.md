@@ -155,48 +155,45 @@ Triển khai Client Go application với full security flow.
 
 ---
 
-## Phase 6: Observability (Week 5-6)
+## Phase 6: Validation & Testing (Week 5-6)
 
 ### Mục tiêu
-Triển khai monitoring và logging.
+Kiểm thử toàn diện mọi lớp phòng thủ trước khi đầu tư làm hạ tầng monitoring.
 
 ### Deliverables
 | # | Deliverable | Description |
 |---|---|---|
-| 6.1 | Prometheus metrics | Go `/metrics` endpoint |
-| 6.2 | Grafana dashboards | Security metrics visualization |
-| 6.3 | Loki log aggregation | Structured JSON log collection |
-| 6.4 | Alert rules | DPoP failure rate, auth anomalies |
+| 6.1 | Dark Service scan test | `nmap` verification |
+| 6.2 | DPoP bypass attempts | Token theft simulation |
+| 6.3 | mTLS bypass attempts | Connection without cert |
+| 6.4 | RLS cross-tenant test | Data isolation verification |
+| 6.5 | WORM tamper test | Audit chain integrity check |
+| 6.6 | Performance benchmark | Latency comparison |
+| 6.7 | Test report | Comprehensive results document |
 
-### Risk
-- Prometheus scraping through Ziti overlay complexity.
+### Success Criteria
+- All 5 must-have objectives (M1-M5) validated with evidence.
+- No critical or high-severity findings.
+
+---
+
+## Phase 7: Observability (Week 6)
+
+### Mục tiêu
+Triển khai monitoring và logging sau khi hệ thống đã được xác thực an toàn.
+
+### Deliverables
+| # | Deliverable | Description |
+|---|---|---|
+| 7.1 | Prometheus metrics | Go `/metrics` endpoint |
+| 7.2 | Grafana dashboards | Security metrics visualization |
+| 7.3 | Loki log aggregation | Structured JSON log collection |
+| 7.4 | Alert rules | DPoP failure rate, auth anomalies |
 
 ### Success Criteria
 - Grafana dashboard shows real-time security metrics.
 - Loki aggregates logs from all services.
 - Alerts fire on simulated attack scenarios.
-
----
-
-## Phase 7: Validation & Testing (Week 6)
-
-### Mục tiêu
-Kiểm thử toàn diện mọi lớp phòng thủ.
-
-### Deliverables
-| # | Deliverable | Description |
-|---|---|---|
-| 7.1 | Dark Service scan test | `nmap` verification |
-| 7.2 | DPoP bypass attempts | Token theft simulation |
-| 7.3 | mTLS bypass attempts | Connection without cert |
-| 7.4 | RLS cross-tenant test | Data isolation verification |
-| 7.5 | WORM tamper test | Audit chain integrity check |
-| 7.6 | Performance benchmark | Latency comparison |
-| 7.7 | Test report | Comprehensive results document |
-
-### Success Criteria
-- All 5 must-have objectives (M1-M5) validated with evidence.
-- No critical or high-severity findings.
 
 ---
 
@@ -220,10 +217,10 @@ Hoàn thiện tài liệu, chuẩn bị báo cáo.
 ```
 Week 1  ████████████████  Phase 0: Research & Docs (COMPLETE)
 Week 2  ████████████████  Phase 1: Infrastructure
-Week 3  ████████████████  Phase 2: Identity + Phase 3: Network
+Week 3  ████████████████  Phase 2: Identity + Phase 2.5: Design
 Week 4  ████████████████  Phase 3: Network + Phase 4: Gateway
 Week 5  ████████████████  Phase 4: Gateway + Phase 5: Client
-Week 6  ████████████████  Phase 6: Observability + Phase 7: Testing
+Week 6  ████████████████  Phase 6: Validation + Phase 7: Observability
 Week 7  ████████          Phase 8: Finalization
 ```
 

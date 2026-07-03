@@ -32,15 +32,16 @@
 ## 16.2 Master Roadmap
 
 ```
-Phase 0  ████████  Research & Documentation     [COMPLETE]
-Phase 1  ████████  Infrastructure Foundation    [READY]
-Phase 2  ████████  Identity & Authentication    
-Phase 3  ████████  Network Overlay              
-Phase 4  ████████  Dark Services Gateway        
-Phase 5  ████████  Client Application           
-Phase 6  ████████  Observability                
-Phase 7  ████████  Validation & Testing         
-Phase 8  ████████  Finalization                 
+Phase 0    ████████  Research & Documentation     [COMPLETE]
+Phase 1    ████████  Infrastructure Foundation    [COMPLETE]
+Phase 2    ████████  Identity & Authentication    [COMPLETE]
+Phase 2.5  ████████  Architecture & Design Specs  [IN PROGRESS]
+Phase 3    ████████  Network Overlay              
+Phase 4    ████████  Dark Services Gateway        
+Phase 5    ████████  Client Application           
+Phase 6    ████████  Validation & Testing         
+Phase 7    ████████  Observability                
+Phase 8    ████████  Finalization                 
 
 Timeline: 7 weeks from Phase 1 start
 ```
