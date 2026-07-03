@@ -7,6 +7,7 @@ import (
 
 type AuthCodeInfo struct {
 	CodeChallenge string
+	ClientID      string
 	ExpiresAt     time.Time
 }
 
@@ -30,19 +31,20 @@ func GetStore() *RAMStore {
 	return instance
 }
 
-// SaveAuthCode lưu mã authorization code kèm code_challenge và thời gian hết hạn
-func (s *RAMStore) SaveAuthCode(code, challenge string, ttl time.Duration) {
+// SaveAuthCode lưu mã authorization code kèm code_challenge, clientID và thời gian hết hạn
+func (s *RAMStore) SaveAuthCode(code, challenge, clientID string, ttl time.Duration) {
 	s.codes.Store(code, AuthCodeInfo{
 		CodeChallenge: challenge,
+		ClientID:      clientID,
 		ExpiresAt:     time.Now().Add(ttl),
 	})
 }
 
-// GetAndRemoveAuthCode lấy code_challenge từ code và xóa code đó ngay lập tức (Chỉ dùng 1 lần)
-func (s *RAMStore) GetAndRemoveAuthCode(code string) (string, bool) {
+// GetAndRemoveAuthCode lấy code_challenge và clientID từ code và xóa code đó ngay lập tức (Chỉ dùng 1 lần)
+func (s *RAMStore) GetAndRemoveAuthCode(code string) (string, string, bool) {
 	val, ok := s.codes.Load(code)
 	if !ok {
-		return "", false
+		return "", "", false
 	}
 	
 	// Xóa ngay lập tức khỏi bộ nhớ
@@ -50,10 +52,10 @@ func (s *RAMStore) GetAndRemoveAuthCode(code string) (string, bool) {
 	
 	info := val.(AuthCodeInfo)
 	if time.Now().After(info.ExpiresAt) {
-		return "", false // Đã hết hạn
+		return "", "", false // Đã hết hạn
 	}
 	
-	return info.CodeChallenge, true
+	return info.CodeChallenge, info.ClientID, true
 }
 
 // IsJTIUsedAndSave kiểm tra xem JTI (DPoP Proof ID) đã được sử dụng chưa

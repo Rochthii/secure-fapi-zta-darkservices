@@ -52,7 +52,7 @@ func AuthorizeHandler(w http.ResponseWriter, r *http.Request) {
 	code := hex.EncodeToString(bytes)
 
 	// 3. Lưu code và challenge vào RAMStore (Hạn dùng 5 phút)
-	store.GetStore().SaveAuthCode(code, codeChallenge, 5*time.Minute)
+	store.GetStore().SaveAuthCode(code, codeChallenge, clientID, 5*time.Minute)
 
 	// 4. Thực hiện Redirect quay lại ứng dụng Client kèm code
 	targetURL, err := url.Parse(redirectURI)
