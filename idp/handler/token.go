@@ -60,6 +60,22 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Xác thực Client Secret
+	clientSecret := r.Form.Get("client_secret")
+	expectedSecret, clientExists := config.RegisteredClients[clientID]
+	if !clientExists {
+		http.Error(w, "invalid_client: client is not registered", http.StatusUnauthorized)
+		return
+	}
+	if clientSecret == "" {
+		http.Error(w, "invalid_client: client_secret is required", http.StatusUnauthorized)
+		return
+	}
+	if clientSecret != expectedSecret {
+		http.Error(w, "invalid_client: client authentication failed", http.StatusUnauthorized)
+		return
+	}
+
 	if !crypto.VerifyPKCE(codeVerifier, codeChallenge, "S256") {
 		http.Error(w, "invalid_grant: PKCE verification failed", http.StatusBadRequest)
 		return

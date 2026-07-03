@@ -1,0 +1,27 @@
+[
+  {
+    "role": "operator",
+    "resource": "balance",
+    "actions": ["READ"]
+  },
+  {
+    "role": "operator",
+    "resource": "transfer",
+    "actions": ["CREATE"]
+  },
+  {
+    "role": "operator",
+    "resource": "audit-logs",
+    "actions": ["READ"]
+  },
+  {
+    "role": "viewer",
+    "resource": "balance",
+    "actions": ["READ"]
+  },
+  {
+    "role": "viewer",
+    "resource": "audit-logs",
+    "actions": ["READ"]
+  }
+]

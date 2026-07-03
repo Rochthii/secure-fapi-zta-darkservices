@@ -23,9 +23,16 @@ type TokenResponse struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+var clientSecrets = map[string]string{
+	"client-alice": "alice-secure-secret-2026",
+	"client-bob":   "bob-secure-secret-2026",
+	"client-evil":  "evil-secure-secret-2026",
+}
+
 func main() {
 	// Parse CLI Arguments
 	identityFlag := flag.String("identity", "client-alice", "OpenZiti client identity (client-alice, client-bob, client-evil)")
+	secretFlag := flag.String("secret", "", "Client secret (optional, defaults to pre-registered secrets)")
 	commandFlag := flag.String("cmd", "balance", "Command to execute (balance, transfer, logs)")
 	amountFlag := flag.Float64("amount", 0.0, "Amount to transfer (only for transfer command)")
 	descFlag := flag.String("desc", "Giao dich PTIT Thesis ZTA", "Description of transfer")
@@ -44,8 +51,14 @@ func main() {
 	jkt, _ := clientCrypto.CalculateJWKThumbprint(&dpopKey.PublicKey)
 	log.Printf("Generated DPoP public key thumbprint (JKT): %s", jkt)
 
+	// Determine client secret
+	secret := *secretFlag
+	if secret == "" {
+		secret = clientSecrets[*identityFlag]
+	}
+
 	// 2. CHẠY LUỒNG PKCE & ĐỔI ACCESS TOKEN TỪ IdP
-	accessToken, err := getDPoPBoundToken(*idpURL, *identityFlag, dpopKey)
+	accessToken, err := getDPoPBoundToken(*idpURL, *identityFlag, secret, dpopKey)
 	if err != nil {
 		log.Fatalf("AUTHENTICATION ERROR: Failed to obtain DPoP-bound token: %v", err)
 	}
@@ -90,7 +103,7 @@ func main() {
 }
 
 // getDPoPBoundToken thực hiện PKCE flow + DPoP token exchange
-func getDPoPBoundToken(idpBaseURL, clientID string, dpopKey *ecdsa.PrivateKey) (string, error) {
+func getDPoPBoundToken(idpBaseURL, clientID, clientSecret string, dpopKey *ecdsa.PrivateKey) (string, error) {
 	// A. Sinh PKCE Verifier & Challenge
 	verifier, challenge, err := clientCrypto.GeneratePKCE()
 	if err != nil {
@@ -99,7 +112,7 @@ func getDPoPBoundToken(idpBaseURL, clientID string, dpopKey *ecdsa.PrivateKey) (
 
 	// B. Bước 1: Authorization Request (lấy authorization code)
 	// Sử dụng Accept: application/json để nhận thẳng code dạng JSON (headless CLI)
-	authURL := fmt.Sprintf("%s/authorize?response_type=code&client_id=%s&code_challenge=%s&code_challenge_method=S256&redirect_uri=http://localhost:8080/callback", idpBaseURL, clientID, challenge)
+	authURL := fmt.Sprintf("%s/authorize?response_type=code&client_id=%s&client_secret=%s&code_challenge=%s&code_challenge_method=S256&redirect_uri=http://localhost:8080/callback", idpBaseURL, clientID, clientSecret, challenge)
 	
 	req, _ := http.NewRequest("GET", authURL, nil)
 	req.Header.Set("Accept", "application/json")
@@ -136,6 +149,7 @@ func getDPoPBoundToken(idpBaseURL, clientID string, dpopKey *ecdsa.PrivateKey) (
 	form.Set("grant_type", "authorization_code")
 	form.Set("code", authResp.Code)
 	form.Set("code_verifier", verifier)
+	form.Set("client_secret", clientSecret)
 
 	tokenReq, _ := http.NewRequest("POST", tokenURL, strings.NewReader(form.Encode()))
 	tokenReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")

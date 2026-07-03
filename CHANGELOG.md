@@ -4,6 +4,71 @@ Tài liệu này ghi nhận toàn bộ lịch sử thay đổi, nâng cấp và 
 
 ---
 
+## [Hoàn thành Phase 8 - Zero Trust Control Plane Dashboard] — 2026-07-03
+
+### Added
+- **API Endpoint Kiểm tra Chứng chỉ thật (/api/certs)**:
+  - Triển khai route kiểm tra chứng chỉ X.509 từ đĩa cứng (Root CA, Intermediate CA, Client Alice) bằng module crypto của Node.js, lấy ngày hết hạn thực tế và trạng thái của từng chứng chỉ.
+- **API Endpoint Xác minh Chuỗi băm (/api/verify-chain)**:
+  - Triển khai route kết nối PostgreSQL thực tế để kiểm tra và xác thực tính toàn vẹn của chuỗi logs kiểm toán (SHA-256 Hash-chain) bằng cách so khớp liên tục `current.prev_hash == previous.block_hash`.
+- **Giao diện SOC Control Plane mở rộng**:
+  - Tái cấu trúc thanh điều hướng thành các nhóm bảo mật chuyên sâu (Overview, Identity, Zero Trust, Gateway, Database, Security SIEM).
+  - Tích hợp Drawer trượt bên phải hiển thị thông số CPU, RAM, RPS, Latency chi tiết cho từng node mạng khi click chọn trên Topology Map.
+  - Tích hợp màn hình xác thực và phiên làm việc động, truy vấn trực tiếp từ logs giao dịch thực tế của PostgreSQL.
+  - Thiết kế bảng điều khiển xác minh Ledger WORM thời gian thực với hiệu ứng chạy quét từng block mã hóa.
+
+### Changed
+- **Chuẩn hóa chất lượng dữ liệu (No Mock Data)**:
+  - Loại bỏ hoàn toàn các vòng lặp sinh dữ liệu giả lập, đảm bảo 100% số liệu hiển thị (RPS, Latency, Log, Certs, Sessions) đều được lấy thực tế từ Go Gateway và PostgreSQL.
+  - Triển khai banner lỗi ngoại tuyến (Offline Banner) động khi Go Gateway ngừng hoạt động để tuân thủ quy tắc an toàn bảo mật.
+- **Tài liệu README.md**:
+  - Loại bỏ hoàn toàn emoji, chuẩn hóa văn phong kỹ thuật chuyên nghiệp đáp ứng chuẩn học thuật.
+
+---
+
+![alt text](image.png)
+![alt text](image-1.png)
+![alt text](image-2.png)
+![alt text](image-3.png)
+## [Hoàn thành Phase 6 & 7] — 2026-07-03
+
+### Added
+- **Security Validation (Phase 6)**:
+  - Khởi tạo bộ kiểm thử tích hợp tự động [tests/security_test.go](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/tests/security_test.go) và [tests/go.mod](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/tests/go.mod) chứa 6 kịch bản tấn công giả lập nâng cao (E2E Valid Flow, Client Spoofing, DPoP Replay, Ziti Fail-Closed, Tenant Isolation RLS, WORM Ledger Immutability).
+  - Thêm Unit Tests kiểm thử các cấu phần nhỏ nhất như check role middleware và trích xuất ziti identity tại [gateway/internal/middleware/auth_test.go](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/gateway/internal/middleware/auth_test.go).
+  - Thêm Unit Tests kiểm thử cryptography client tại [client/crypto/crypto_test.go](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/client/crypto/crypto_test.go).
+- **Performance Benchmarking (Phase 7)**:
+  - Triển khai tệp đo hiệu năng tự động [tests/performance_test.go](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/tests/performance_test.go) bao gồm đo đạc throughput song song (`BenchmarkEndToEndFlow`) và bóc tách độ trễ xử lý chi tiết từng microsecond (`TestLatencyBreakdown`).
+  - Thêm kịch bản test `TestPrometheusMetrics` tự động gửi request nghiệp vụ và xác thực định dạng gói tin thô `/metrics`.
+- **NIST PDP/PEP Policy Engine**:
+  - Triển khai tệp cấu hình quy tắc phân quyền động dạng khai báo tại [policies.json](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/gateway/config/policies.json).
+  - Triển khai bộ phân tích và quyết định chính sách [pdp.go](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/gateway/internal/policy/pdp.go) độc lập (Policy Decision Point - PDP).
+- **Prometheus Telemetry Exporter**:
+  - Triển khai module thu thập và xuất dữ liệu hiệu năng thread-safe dạng Prometheus [metrics.go](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/gateway/internal/telemetry/metrics.go) tại cổng `/metrics`.
+- **Telemetry Docker Stack (Prometheus + Grafana + Loki + Promtail)**:
+  - Tích hợp 4 dịch vụ giám sát an ninh vào cụm [docker-compose.yml](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/docker/docker-compose.yml).
+  - Khởi tạo tệp cấu hình Prometheus [prometheus.yml](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/docker/telemetry/prometheus/prometheus.yml) tự động scrape dữ liệu từ Gateway.
+  - Thiết lập Loki [loki.yml](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/docker/telemetry/loki/loki.yml) và Promtail [promtail.yml](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/docker/telemetry/promtail/promtail.yml) để giám sát và thu thập tệp log `gateway.log` thời gian thực.
+  - Cấu hình tự động nạp nguồn dữ liệu (datasources) và bản đồ điều khiển an ninh mạng pre-configured [soc_telemetry.json](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/docker/telemetry/grafana/dashboards/soc_telemetry.json) cho Grafana để chạy demo trực quan (Bảng 1, 2, 3).
+
+### Changed
+- **API Gateway**:
+  - Hỗ trợ thêm biến môi trường `ENFORCE_ZITI` để bắt buộc bật kiểm tra danh tính mạng OpenZiti (chốt chặn fail-closed) ngay cả trên môi trường debug TCP local.
+  - Sửa đổi cơ chế check Ziti từ fail-open sang fail-closed hoàn toàn: khi bật check Ziti, nếu không lấy được identity mạng ảo, request bị từ chối bằng mã lỗi `403 Forbidden` lập tức.
+  - Nhúng cảm biến đo thời gian (latency instrumentation) vào middleware xác thực (`SecureAPI`) và DB Client, trả độ trễ xử lý mật mã học qua các Response Headers (`X-Perf-*`).
+  - Thay thế middleware kiểm tra quyền hạn hardcode bằng middleware động `EnforcePolicy` (PEP - Policy Enforcement Point) kết nối trực tiếp với PDP.
+  - Tích hợp các bộ đếm request và ghi nhận độ trễ tự động đẩy sang Prometheus Exporter.
+- **Identity Provider (IdP)**:
+  - Tích hợp thêm cơ chế xác thực Client (Client Authentication) bằng pre-shared client secrets tại cả hai đầu mút `/authorize` (cho các headless JSON request) và `/token`.
+  - Khai báo danh sách Client và Secret tại cấu hình mới [idp/config/clients.go](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/idp/config/clients.go).
+- **Client Application**:
+  - Cập nhật client CLI tự động truyền Secret và thêm cờ `-secret` để phục vụ các kịch bản kiểm thử tấn công giả lập.
+- **Tài liệu Lộ trình & Threat Model**:
+  - Bổ sung chương giới hạn mô hình an ninh (Section 5.5) vào [docs/security/threat-model.md](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/docs/security/threat-model.md) thừa nhận điểm yếu của WORM trigger khi đối mặt với database superuser (do thiếu neo giữ ngoài - external anchoring) và cache chống replay in-memory trong kịch bản scale-out multi-instance.
+  - Đồng bộ hóa Master Roadmap hướng học thuật (2026 - 2029) vào các tài liệu lộ trình [13_IMPLEMENTATION_ROADMAP.md](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/docs/13_IMPLEMENTATION_ROADMAP.md) và [16_FINAL_MASTER_PLAN.md](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/docs/16_FINAL_MASTER_PLAN.md).
+
+---
+
 ## [Hoàn thành Phase 3, 4 & 5] — 2026-07-03
 
 ### Added

@@ -136,3 +136,18 @@ Hệ thống được phân vùng thành 4 Ranh giới tin cậy độc lập, p
                     │  [R] -> SHA-256 Chain│
                     └─────────────────────┘
 ```
+
+---
+
+## 5.5 Giới hạn hệ thống & Threat Model (System & Threat Model Boundaries)
+
+Để đảm bảo tính trung thực và khách quan khoa học, mô hình bảo mật của hệ thống thừa nhận các giới hạn kỹ thuật (out-of-scope hoặc known limitations) sau đây:
+
+### 5.5.1 Giới hạn của Chuỗi Hash-chain tại Database (No External Anchoring)
+*   **Vấn đề:** Mặc dù cơ chế trigger WORM chặn đứng các lệnh `UPDATE` và `DELETE` ở mức cơ sở dữ liệu đối với người dùng thông thường (`app_user`), và liên kết các dòng log bằng chuỗi băm SHA-256 liên tục, hệ thống **không có cơ chế Neo giữ (External Anchoring)** (như gửi mã băm lên blockchain hoặc dịch vụ ký số bên ngoài).
+*   **Hệ quả:** Kẻ tấn công có đặc quyền Quản trị viên tối cao (Postgres Superuser/Root DB Admin) hoặc truy cập trực tiếp vào phân vùng đĩa cứng lưu trữ vẫn có thể xoá toàn bộ bảng log, sau đó tái thiết lập (rebuild) một chuỗi hash-chain mới từ đầu mà không bị phát hiện bởi cơ chế kiểm tra nội bộ. Do đó, hệ thống không đạt tính chất "tamper-proof" tuyệt đối trước các đợt tấn công nội bộ (Insider Threats) có quyền root.
+
+### 5.5.2 Giới hạn của Bộ lọc chống Replay DPoP (In-Memory Single Instance Cache)
+*   **Vấn đề:** Cache lưu trữ các mã định danh `jti` chống tấn công phát lại (Replay Attack) được triển khai thông qua `sync.Map` in-memory (ở cả IdP và Gateway).
+*   **Hệ quả:** Cơ chế chống replay này chỉ hoạt động hiệu quả trong môi trường đơn thực thể (Single-instance). Nếu hệ thống được mở rộng (scale-out) thành nhiều pod/instance sau các bộ cân bằng tải mà không chia sẻ bộ nhớ chung (Shared Cache), kẻ tấn công có thể thực hiện Replay Attack bằng cách chuyển tiếp token thu được sang một instance khác chưa lưu `jti` đó vào RAM. Để khắc phục giới hạn này trong môi trường sản xuất lớn, cần thay thế bằng một kho lưu trữ phân tán có hỗ trợ khóa TTL tự động (như Redis).
+

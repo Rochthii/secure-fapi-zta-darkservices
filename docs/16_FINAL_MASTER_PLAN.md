@@ -32,18 +32,12 @@
 ## 16.2 Master Roadmap
 
 ```
-Phase 0    ████████  Research & Documentation     [COMPLETE]
-Phase 1    ████████  Infrastructure Foundation    [COMPLETE]
-Phase 2    ████████  Identity & Authentication    [COMPLETE]
-Phase 2.5  ████████  Architecture & Design Specs  [IN PROGRESS]
-Phase 3    ████████  Network Overlay              
-Phase 4    ████████  Dark Services Gateway        
-Phase 5    ████████  Client Application           
-Phase 6    ████████  Validation & Testing         
-Phase 7    ████████  Observability                
-Phase 8    ████████  Finalization                 
+Phase 0-5  ████████  Core FAPI-ZTA Implementation                [COMPLETE]
+Phase 6    ████████  Failure-Mode Analysis & Integration Tests   [COMPLETE]
+Phase 7    ████████  Formal Verification & Performance Benchmark [IN PROGRESS (2026 - 2028)]
+Phase 8    ████████  Academic Writing & PTIT Thesis Defense      [PLANNED (2028 - 2029)]
 
-Timeline: 7 weeks from Phase 1 start
+Timeline: 2026 - 2029 (Aligned with Academic & Research Schedule)
 ```
 
 ---
@@ -149,6 +143,36 @@ Timeline: 7 weeks from Phase 1 start
 | T4.7 | Balance handler | HIGH | T4.5 |
 | T4.8 | WORM audit writer | HIGH | T1.6 |
 | T4.9 | DB connection pool | HIGH | T1.4 |
+
+### Phase 5 — Client Application
+
+| ID | Task | Priority | Depends On |
+|---|---|---|---|
+| T5.1 | Integrate PKCE (Verifier/Challenge) in client | HIGH | T2.5 |
+| T5.2 | Client key management (ECC P-256 DPoP signing) | HIGH | T2.6 |
+| T5.3 | Embed OpenZiti SDK dialer | HIGH | T3.3 |
+| T5.4 | Develop CLI interface (balance, transfer, logs) | MEDIUM | T5.3 |
+
+### Phase 6 — Failure-Mode Analysis & Security Validation (2026-2027)
+
+| ID | Task | Priority | Depends On |
+|---|---|---|---|
+| T6.1 | Develop Automated Integration Testing Suite for attack simulations **(COMPLETE)** | HIGH | T4.6, T5.4 |
+| T6.2 | Define and document formal Attacker Model and failure modes **(COMPLETE)** | HIGH | - |
+| T6.3 | Build Penetration Test Scripts for DPoP JTI Replay attacks **(COMPLETE)** | MEDIUM | T2.8 |
+| T6.4 | Validate WORM trigger bypasses under Postgres superuser privileges **(COMPLETE)** | MEDIUM | T1.6 |
+| T6.5 | Build tests for Ziti identity mismatch and fail-closed bypasses **(COMPLETE)** | HIGH | T4.3 |
+| T6.6 | Draft the "Security Analysis & Validation" Thesis Chapter | MEDIUM | T6.1–T6.5 |
+
+### Phase 7 — Formal Verification & Performance Benchmark (2027-2028)
+
+| ID | Task | Priority | Depends On |
+|---|---|---|---|
+| T7.1 | Model Ziti + DPoP + mTLS protocol logic in ProVerif/Tamarin **(COMPLETE)** | HIGH | - |
+| T7.2 | Run formal verification proofs for session hijacking resistance | HIGH | T7.1 |
+| T7.3 | Develop latency-breakdown instrumentation for Gateway middleware **(COMPLETE)** | MEDIUM | T4.2 |
+| T7.4 | Execute stress-testing benchmarks under load (k6/wrk) **(COMPLETE)** | HIGH | T7.3 |
+| T7.5 | Draft the "Performance & Formal Methods Analysis" Thesis Chapter | MEDIUM | T7.2, T7.4 |
 
 ---
 

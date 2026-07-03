@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -11,11 +12,24 @@ import (
 	"gateway/internal/audit"
 	"gateway/internal/api"
 	"gateway/internal/middleware"
+	"gateway/internal/policy"
+	"gateway/internal/telemetry"
 	"gateway/internal/ziti"
 )
 
 func main() {
+	// Cấu hình log ghi ra cả Console và file gateway.log để Promtail thu thập
+	logFile, err := os.OpenFile("gateway.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err == nil {
+		log.SetOutput(io.MultiWriter(os.Stdout, logFile))
+	}
+
 	log.Println("Starting Secure FAPI-ZTA Dark API Gateway...")
+
+	// Khởi tạo Policy Engine (PDP)
+	if err := policy.LoadPolicies(); err != nil {
+		log.Fatalf("POLICY ERROR: Failed to load policies: %v", err)
+	}
 
 	// 1. Tải cấu hình từ biến môi trường
 	dbURL := os.Getenv("DATABASE_URL")
@@ -40,6 +54,7 @@ func main() {
 
 	useZitiStr := os.Getenv("USE_ZITI")
 	useZiti := !strings.EqualFold(useZitiStr, "false")
+	enforceZiti := useZiti || strings.EqualFold(os.Getenv("ENFORCE_ZITI"), "true")
 
 	// 2. Khởi tạo Database client và kết nối
 	dbClient, err := audit.NewDBClient(dbURL)
@@ -50,26 +65,29 @@ func main() {
 	log.Println("Connected to PostgreSQL database successfully.")
 
 	// 3. Khởi tạo Auth Middleware & API Handlers
-	authMiddleware := middleware.NewAuthMiddleware(jwksURL)
+	authMiddleware := middleware.NewAuthMiddleware(jwksURL, enforceZiti)
 	handlers := api.NewAPIHandlers(dbClient)
 
 	// 4. Định nghĩa Router và Middleware Chain
 	mux := http.NewServeMux()
 
-	// Giao dịch chuyển khoản: Yêu cầu role operator
+	// Giao dịch chuyển khoản: Chuyển quyền quyết định qua PDP và thực thi tại PEP
 	mux.Handle("/api/transfer", authMiddleware.SecureAPI(
-		middleware.RequireRole("operator")(http.HandlerFunc(handlers.CreateTransferHandler)),
+		authMiddleware.EnforcePolicy(http.HandlerFunc(handlers.CreateTransferHandler)),
 	))
 
-	// Truy vấn số dư: Cho phép role operator hoặc viewer
+	// Truy vấn số dư
 	mux.Handle("/api/balance", authMiddleware.SecureAPI(
-		middleware.RequireRole("operator", "viewer")(http.HandlerFunc(handlers.GetBalanceHandler)),
+		authMiddleware.EnforcePolicy(http.HandlerFunc(handlers.GetBalanceHandler)),
 	))
 
-	// Tra cứu nhật ký audit ledger: Cho phép operator hoặc viewer
+	// Tra cứu nhật ký audit ledger
 	mux.Handle("/api/audit-logs", authMiddleware.SecureAPI(
-		middleware.RequireRole("operator", "viewer")(http.HandlerFunc(handlers.GetAuditLogsHandler)),
+		authMiddleware.EnforcePolicy(http.HandlerFunc(handlers.GetAuditLogsHandler)),
 	))
+
+	// Endpoint giám sát an ninh và hiệu năng (Prometheus Exporter)
+	mux.HandleFunc("/metrics", telemetry.ServeMetrics)
 
 	// 5. Cấu hình Server lắng nghe kết nối
 	// Tiêm net.Conn vào Request Context để Middleware mTLS đối chiếu danh tính

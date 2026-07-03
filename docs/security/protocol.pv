@@ -1,0 +1,146 @@
+(* ProVerif Model for FAPI 2.0 + OpenZiti Cross-Layer Binding Security Verification *)
+
+(* 1. Channels *)
+free c_public: channel.           (* Public internet channel, completely controlled by attacker *)
+free c_ziti_overlay: channel.      (* Virtual OpenZiti overlay network channel. Confidential and authenticated by mTLS *)
+
+(* 2. Types & Constructors *)
+type pkey.          (* Public Key *)
+type skey.          (* Private Key *)
+type key.           (* Symmetric Key *)
+type identity.      (* Client identity name *)
+
+(* Cryptographic Primitives *)
+fun pk(skey): pkey.                   (* Derive public key from private key *)
+fun sha256(bitstring): bitstring.     (* SHA-256 Hash function *)
+
+(* Digital Signatures (ECDSA ES256) *)
+fun sign(bitstring, skey): bitstring.
+reconstruct fun verify(bitstring, bitstring, pkey): bool
+    recsig verify(msg, sign(msg, sk), pk(sk)) = true.
+
+(* Symmetric Encryption *)
+fun encrypt(bitstring, key): bitstring.
+reconstruct fun decrypt(bitstring, key): bitstring
+    recsig decrypt(encrypt(msg, k), k) = msg.
+
+(* 3. Global Constants & Ephemeral Names *)
+free alice_id: identity.
+free bob_id: identity.
+free gateway_pubkey: pkey.
+
+(* Secrecy queries *)
+free alice_balance: bitstring [private].
+free bob_balance: bitstring [private].
+
+query secret alice_balance.
+query secret bob_balance.
+
+(* Event definitions for authentication (Agreement) verification *)
+event ClientAuthStarted(identity, bitstring).   (* client id, pkce challenge *)
+event IdpTokenIssued(identity, pkey, bitstring). (* client id, client dpop pkey, access_token *)
+event GatewayRequestServed(identity, bitstring). (* client id, balance *)
+
+(* Agreement query: If gateway serves request, did the genuine client request it? *)
+query id: identity, bal: bitstring; 
+      inj-event(GatewayRequestServed(id, bal)) ==> inj-event(ClientAuthStarted(id, bal)).
+
+(* 4. Client Process *)
+let processClient(id: identity, sk_client: skey, sk_dpop: skey) =
+    (* Generate PKCE verifier and challenge *)
+    new verifier: bitstring;
+    let challenge = sha256(verifier) in
+    
+    (* Step 1: Request Authorization Code from IdP over public channel *)
+    event ClientAuthStarted(id, alice_balance);
+    out(c_public, (id, challenge));
+    
+    (* Step 2: Receive Auth Code from IdP *)
+    in(c_public, (auth_code: bitstring));
+    
+    (* Step 3: Exchange Auth Code for Access Token. Must present PKCE verifier + DPoP Proof *)
+    let client_dpop_pk = pk(sk_dpop) in
+    let dpop_claims = (auth_code, client_dpop_pk) in
+    let dpop_proof = sign(dpop_claims, sk_dpop) in
+    out(c_public, (auth_code, verifier, dpop_proof, client_dpop_pk));
+    
+    (* Step 4: Receive DPoP-bound Access Token *)
+    in(c_public, (access_token: bitstring));
+    
+    (* Step 5: Access API Gateway tàng hình via OpenZiti Overlay channel *)
+    (* Sign API Request DPoP Proof binding the Access Token *)
+    let api_dpop_claims = (access_token, client_dpop_pk) in
+    let api_dpop_proof = sign(api_dpop_claims, sk_dpop) in
+    
+    (* Transmit over the Ziti secure channel binding identity with the payload *)
+    out(c_ziti_overlay, (id, access_token, api_dpop_proof, client_dpop_pk));
+    
+    (* Step 6: Read final transaction outcome/balance *)
+    in(c_ziti_overlay, (enc_balance: bitstring, k_session: key));
+    let balance = decrypt(enc_balance, k_session) in
+    0.
+
+(* 5. Identity Provider (IdP) Process *)
+let processIdP(sk_idp: skey) =
+    (* Listen for Authorization requests *)
+    in(c_public, (id: identity, challenge: bitstring));
+    
+    (* Issue temporary Auth Code *)
+    new auth_code: bitstring;
+    out(c_public, auth_code);
+    
+    (* Exchange Auth Code for Access Token *)
+    in(c_public, (=auth_code, verifier: bitstring, dpop_proof: bitstring, client_dpop_pk: pkey));
+    
+    (* Verify PKCE challenge: challenge == sha256(verifier) *)
+    if challenge = sha256(verifier) then
+    
+    (* Verify DPoP Proof signature using the client's public key *)
+    let dpop_claims = (auth_code, client_dpop_pk) in
+    if verify(dpop_claims, dpop_proof, client_dpop_pk) = true then
+    
+    (* Issue Access Token containing identity (sub) and DPoP thumbprint (cnf.jkt) *)
+    (* We represent token binding by encrypting the identity and client thumbprint with IdP key *)
+    new token_seed: bitstring;
+    let access_token = sha256((id, client_dpop_pk, token_seed)) in
+    
+    (* Register the token mapping internally *)
+    event IdpTokenIssued(id, client_dpop_pk, access_token);
+    out(c_public, access_token).
+
+(* 6. API Gateway Process *)
+let processGateway(sk_gateway: skey) =
+    (* Accept connections only via OpenZiti Overlay Network (mTLS authenticated) *)
+    in(c_ziti_overlay, (ziti_network_identity: identity, access_token: bitstring, api_dpop_proof: bitstring, client_dpop_pk: pkey));
+    
+    (* 1. Verify DPoP proof signature using public key sent in header *)
+    let api_dpop_claims = (access_token, client_dpop_pk) in
+    if verify(api_dpop_claims, api_dpop_proof, client_dpop_pk) = true then
+    
+    (* 2. Verify Access Token bound to the sender public key (sender-constraining) *)
+    (* And verify Cross-Layer Binding: Ziti Network Identity must match Token Subject (sub) *)
+    (* In ProVerif, we check if the IdP issued this token for this identity and public key *)
+    in(c_public, (=IdpTokenIssued(ziti_network_identity, client_dpop_pk, access_token)));
+    
+    (* If all checks pass, serve request *)
+    new session_key: key;
+    let enc_bal = encrypt(alice_balance, session_key) in
+    event GatewayRequestServed(ziti_network_identity, alice_balance);
+    out(c_ziti_overlay, (enc_bal, session_key)).
+
+(* 7. Main Process Execution *)
+process
+    (* Private signing keys for IdP and Gateway *)
+    new sk_idp: skey;
+    new sk_gateway: skey;
+    
+    (* Ephemeral keys for Client Alice *)
+    new sk_alice: skey;
+    new sk_dpop_alice: skey;
+    
+    (* Launch parallel processes *)
+    (
+        processClient(alice_id, sk_alice, sk_dpop_alice) |
+        processIdP(sk_idp) |
+        processGateway(sk_gateway)
+    )

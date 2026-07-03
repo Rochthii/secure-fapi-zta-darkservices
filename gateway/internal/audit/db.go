@@ -73,26 +73,29 @@ func (c *DBClient) Close() {
 }
 
 // CreateTransaction inserts a new financial transaction under RLS context
-func (c *DBClient) CreateTransaction(tenantID string, amount float64, description string, actorSub string) (*Transaction, error) {
+func (c *DBClient) CreateTransaction(tenantID string, amount float64, description string, actorSub string) (*Transaction, int64, int64, error) {
 	// Start transaction to bind SET LOCAL lifetime to this transaction only
 	tx, err := c.db.Begin()
 	if err != nil {
-		return nil, fmt.Errorf("failed to start database transaction: %w", err)
+		return nil, 0, 0, fmt.Errorf("failed to start database transaction: %w", err)
 	}
 	defer tx.Rollback()
 
 	// 1. Inject Tenant Context for RLS
+	rlsStart := time.Now()
 	_, err = tx.Exec("SELECT set_config('app.tenant_id', $1, true)", tenantID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set RLS tenant context: %w", err)
+		return nil, 0, 0, fmt.Errorf("failed to set RLS tenant context: %w", err)
 	}
+	rlsTimeUs := time.Since(rlsStart).Microseconds()
 
 	// 2. Perform Transaction Insertion
+	dbExecStart := time.Now()
 	var t Transaction
 	query := "INSERT INTO transactions (tenant_id, amount, description) VALUES ($1, $2, $3) RETURNING id, created_at"
 	err = tx.QueryRow(query, tenantID, amount, description).Scan(&t.ID, &t.CreatedAt)
 	if err != nil {
-		return nil, fmt.Errorf("transaction insert blocked or failed: %w", err)
+		return nil, 0, 0, fmt.Errorf("transaction insert blocked or failed: %w", err)
 	}
 
 	t.TenantID = tenantID
@@ -111,37 +114,41 @@ func (c *DBClient) CreateTransaction(tenantID string, amount float64, descriptio
 	auditQuery := "INSERT INTO audit_logs (actor_id, tenant_id, action, resource, details) VALUES ($1, $2, $3, $4, $5)"
 	_, err = tx.Exec(auditQuery, actorUUID, tenantID, "CREATE_TRANSACTION", "transactions", string(detailsBytes))
 	if err != nil {
-		return nil, fmt.Errorf("failed to write audit log: %w", err)
+		return nil, 0, 0, fmt.Errorf("failed to write audit log: %w", err)
 	}
 
 	// Commit transaction
 	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+		return nil, 0, 0, fmt.Errorf("failed to commit transaction: %w", err)
 	}
+	dbExecTimeUs := time.Since(dbExecStart).Microseconds()
 
-	return &t, nil
+	return &t, rlsTimeUs, dbExecTimeUs, nil
 }
 
 // GetBalance retrieves the total balance of a tenant under RLS context
-func (c *DBClient) GetBalance(tenantID string, actorSub string) (float64, error) {
+func (c *DBClient) GetBalance(tenantID string, actorSub string) (float64, int64, int64, error) {
 	tx, err := c.db.Begin()
 	if err != nil {
-		return 0, fmt.Errorf("failed to start database transaction: %w", err)
+		return 0, 0, 0, fmt.Errorf("failed to start database transaction: %w", err)
 	}
 	defer tx.Rollback()
 
 	// 1. Inject Tenant Context for RLS
+	rlsStart := time.Now()
 	_, err = tx.Exec("SELECT set_config('app.tenant_id', $1, true)", tenantID)
 	if err != nil {
-		return 0, fmt.Errorf("failed to set RLS tenant context: %w", err)
+		return 0, 0, 0, fmt.Errorf("failed to set RLS tenant context: %w", err)
 	}
+	rlsTimeUs := time.Since(rlsStart).Microseconds()
 
 	// 2. Run query
+	dbExecStart := time.Now()
 	var balance float64
 	query := "SELECT COALESCE(SUM(amount), 0) FROM transactions"
 	err = tx.QueryRow(query).Scan(&balance)
 	if err != nil {
-		return 0, fmt.Errorf("failed to query balance: %w", err)
+		return 0, 0, 0, fmt.Errorf("failed to query balance: %w", err)
 	}
 
 	// 3. Write WORM Audit Log
@@ -149,35 +156,39 @@ func (c *DBClient) GetBalance(tenantID string, actorSub string) (float64, error)
 	auditQuery := "INSERT INTO audit_logs (actor_id, tenant_id, action, resource, details) VALUES ($1, $2, $3, $4, $5)"
 	_, err = tx.Exec(auditQuery, actorUUID, tenantID, "GET_BALANCE", "transactions", "{}")
 	if err != nil {
-		return 0, fmt.Errorf("failed to write audit log: %w", err)
+		return 0, 0, 0, fmt.Errorf("failed to write audit log: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("failed to commit transaction: %w", err)
+		return 0, 0, 0, fmt.Errorf("failed to commit transaction: %w", err)
 	}
+	dbExecTimeUs := time.Since(dbExecStart).Microseconds()
 
-	return balance, nil
+	return balance, rlsTimeUs, dbExecTimeUs, nil
 }
 
 // GetAuditLogs retrieves all audit logs for the tenant
-func (c *DBClient) GetAuditLogs(tenantID string) ([]AuditLog, error) {
+func (c *DBClient) GetAuditLogs(tenantID string) ([]AuditLog, int64, int64, error) {
 	tx, err := c.db.Begin()
 	if err != nil {
-		return nil, fmt.Errorf("failed to start database transaction: %w", err)
+		return nil, 0, 0, fmt.Errorf("failed to start database transaction: %w", err)
 	}
 	defer tx.Rollback()
 
 	// 1. Inject Tenant Context for RLS
+	rlsStart := time.Now()
 	_, err = tx.Exec("SELECT set_config('app.tenant_id', $1, true)", tenantID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set RLS tenant context: %w", err)
+		return nil, 0, 0, fmt.Errorf("failed to set RLS tenant context: %w", err)
 	}
+	rlsTimeUs := time.Since(rlsStart).Microseconds()
 
 	// 2. Query logs
+	dbExecStart := time.Now()
 	query := "SELECT id, timestamp, actor_id, tenant_id, action, resource, details, prev_hash, block_hash FROM audit_logs ORDER BY id ASC"
 	rows, err := tx.Query(query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query audit logs: %w", err)
+		return nil, 0, 0, fmt.Errorf("failed to query audit logs: %w", err)
 	}
 	defer rows.Close()
 
@@ -187,15 +198,16 @@ func (c *DBClient) GetAuditLogs(tenantID string) ([]AuditLog, error) {
 		var detailsRaw []byte
 		err := rows.Scan(&l.ID, &l.Timestamp, &l.ActorID, &l.TenantID, &l.Action, &l.Resource, &detailsRaw, &l.PrevHash, &l.BlockHash)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan audit log row: %w", err)
+			return nil, 0, 0, fmt.Errorf("failed to scan audit log row: %w", err)
 		}
 		l.Details = string(detailsRaw)
 		logs = append(logs, l)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+		return nil, 0, 0, fmt.Errorf("failed to commit transaction: %w", err)
 	}
+	dbExecTimeUs := time.Since(dbExecStart).Microseconds()
 
-	return logs, nil
+	return logs, rlsTimeUs, dbExecTimeUs, nil
 }

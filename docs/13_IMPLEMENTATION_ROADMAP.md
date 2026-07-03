@@ -155,75 +155,72 @@ Triển khai Client Go application với full security flow.
 
 ---
 
-## Phase 6: Validation & Testing (Week 5-6)
+## Phase 6: Failure-Mode Analysis & Security Validation (2026 - 2027)
 
 ### Mục tiêu
-Kiểm thử toàn diện mọi lớp phòng thủ trước khi đầu tư làm hạ tầng monitoring.
+Kiểm thử toàn diện các lỗ hổng bảo mật tiềm ẩn, tự động hóa kịch bản tấn công và phân tích các trường hợp sai lỗi cấu hình (Failure-modes).
 
 ### Deliverables
 | # | Deliverable | Description |
 |---|---|---|
-| 6.1 | Dark Service scan test | `nmap` verification |
-| 6.2 | DPoP bypass attempts | Token theft simulation |
-| 6.3 | mTLS bypass attempts | Connection without cert |
-| 6.4 | RLS cross-tenant test | Data isolation verification |
-| 6.5 | WORM tamper test | Audit chain integrity check |
-| 6.6 | Performance benchmark | Latency comparison |
-| 6.7 | Test report | Comprehensive results document |
+| 6.1 | Attack Scenario Tests | Bộ integration test tự động kiểm thử các lỗi bảo mật cấu hình (như bypass Ziti, spoof client secret). |
+| 6.2 | Failure-Mode Analysis | Nghiên cứu sâu về các điểm sập (fail-open) và xây dựng cơ chế fail-closed chặt chẽ cho hệ thống. |
+| 6.3 | Penetration Test simulation | Giả lập tấn công đánh cắp token, tấn công phát lại (replay), và kiểm soát máy chủ cơ sở dữ liệu. |
+| 6.4 | Security Audit Report | Báo cáo chi tiết các kịch bản lỗi, mã kiểm thử và phương án phòng vệ chủ động. |
 
 ### Success Criteria
-- All 5 must-have objectives (M1-M5) validated with evidence.
-- No critical or high-severity findings.
+- Hệ thống tự động từ chối và cảnh báo chính xác 100% các cuộc tấn công giả lập.
+- Xây dựng thành công tài liệu phân tích lỗi hệ thống làm cơ sở cho Chương 4 của đồ án.
 
 ---
 
-## Phase 7: Observability (Week 6)
+## Phase 7: Formal Verification & Empirical Benchmarking (2027 - 2028)
 
 ### Mục tiêu
-Triển khai monitoring và logging sau khi hệ thống đã được xác thực an toàn.
+Chứng minh tính an toàn toán học của mô hình liên kết chéo (Cross-layer binding) và đo lường định lượng chi phí hiệu năng (Overhead benchmark).
 
 ### Deliverables
 | # | Deliverable | Description |
 |---|---|---|
-| 7.1 | Prometheus metrics | Go `/metrics` endpoint |
-| 7.2 | Grafana dashboards | Security metrics visualization |
-| 7.3 | Loki log aggregation | Structured JSON log collection |
-| 7.4 | Alert rules | DPoP failure rate, auth anomalies |
+| 7.1 | Protocol Modeling | Khai báo và mô hình hóa giao thức (Ziti + DPoP + mTLS) sử dụng ProVerif tại [protocol.pv](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/docs/security/protocol.pv). **(COMPLETE)** |
+| 7.2 | Formal Verification | Kiểm chứng chính thức các thuộc tính an toàn chống lại Cuckoo's Token Attack và Insider Threats. |
+| 7.3 | Latency Breakdown | Đo kiểm thời gian xử lý chi tiết của từng lớp (Network, DPoP verify, RLS context switch, Hash-chain) tại [performance_test.go](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/tests/performance_test.go). **(COMPLETE)** |
+| 7.4 | Trade-off Analysis | Báo cáo định lượng về mối quan hệ đánh đổi giữa bảo mật gia cường và độ trễ giao dịch. |
 
 ### Success Criteria
-- Grafana dashboard shows real-time security metrics.
-- Loki aggregates logs from all services.
-- Alerts fire on simulated attack scenarios.
+- Hoàn thành mô hình kiểm chứng không chứa lỗi logic giao thức.
+- Xuất bản số liệu benchmark p50/p95/p99 trực quan so sánh với baseline.
 
 ---
 
-## Phase 8: Documentation & Finalization (Week 6-7)
+## Phase 8: Academic Writing & PTIT Thesis Defense (2028 - 2029)
 
 ### Mục tiêu
-Hoàn thiện tài liệu, chuẩn bị báo cáo.
+Tổng hợp kết quả nghiên cứu, công bố bài báo khoa học và hoàn thiện hồ sơ bảo vệ đồ án tốt nghiệp PTIT.
 
 ### Deliverables
 | # | Deliverable | Description |
 |---|---|---|
-| 8.1 | Final architecture docs | Updated with implementation learnings |
-| 8.2 | Test results | Screenshots, nmap output, benchmark charts |
-| 8.3 | README | Complete project setup guide |
-| 8.4 | Git repository | Clean commit history, tagged releases |
+| 8.1 | Academic Paper | Viết và gửi bài báo khoa học tham dự các hội thảo uy tín trong nước/quốc tế (FAIR, NICS, v.v.). |
+| 8.2 | Complete Thesis | Soạn thảo cuốn đồ án tốt nghiệp PTIT cấu trúc chuẩn khoa học (gồm cả 3 chương nghiên cứu sâu). |
+| 8.3 | Defense Materials | Thiết kế slide báo cáo, chuẩn bị kịch bản demo và mô phỏng tấn công thời gian thực. |
+
+### Success Criteria
+- Đồ án được hội đồng nghiệm thu đánh giá xuất sắc.
+- Có ít nhất một bài báo khoa học được chấp nhận đăng hoặc báo cáo chuyên đề cấp học viện.
 
 ---
 
-## Master Timeline
+## Master Timeline (2026 - 2029)
 
 ```
-Week 1  ████████████████  Phase 0: Research & Docs (COMPLETE)
-Week 2  ████████████████  Phase 1: Infrastructure
-Week 3  ████████████████  Phase 2: Identity + Phase 2.5: Design
-Week 4  ████████████████  Phase 3: Network + Phase 4: Gateway
-Week 5  ████████████████  Phase 4: Gateway + Phase 5: Client
-Week 6  ████████████████  Phase 6: Validation + Phase 7: Observability
-Week 7  ████████          Phase 8: Finalization
+2026          ████████████████  Phase 1-5: Hiện thực hóa core system (COMPLETE)
+2026 - 2027   ████████████████  Phase 6: Failure-Mode Analysis & Integration Tests
+2027 - 2028   ████████████████  Phase 7: Formal Verification & Performance Benchmarking
+2028 - 2029   ████████          Phase 8: Công bố khoa học & Bảo vệ đồ án PTIT
 ```
 
 ---
 
 > **Next:** [PART 14 — Project Structure](./14_PROJECT_STRUCTURE.md)
+

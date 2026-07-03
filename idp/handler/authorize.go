@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"net/http"
 	"net/url"
+	"secure-fapi-zta-darkservices/idp/config"
 	"secure-fapi-zta-darkservices/idp/store"
 	"time"
 )
@@ -26,6 +27,11 @@ func AuthorizeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if clientID == "" {
 		http.Error(w, "invalid_request: client_id is required", http.StatusBadRequest)
+		return
+	}
+	expectedSecret, clientExists := config.RegisteredClients[clientID]
+	if !clientExists {
+		http.Error(w, "invalid_client: client_id is not registered", http.StatusUnauthorized)
 		return
 	}
 	if redirectURI == "" {
@@ -71,6 +77,17 @@ func AuthorizeHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Cho phép Client API gọi không cần redirect thực tế nếu yêu cầu JSON (phục vụ headless tests)
 	if r.Header.Get("Accept") == "application/json" {
+		// Ở chế độ headless (JSON), bắt buộc phải có client_secret để xác thực client tại authorize endpoint
+		clientSecret := q.Get("client_secret")
+		if clientSecret == "" {
+			http.Error(w, "invalid_client: client_secret is required for headless flow", http.StatusUnauthorized)
+			return
+		}
+		if clientSecret != expectedSecret {
+			http.Error(w, "invalid_client: client authentication failed", http.StatusUnauthorized)
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"code":"` + code + `"}`))
 		return

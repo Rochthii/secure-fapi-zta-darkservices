@@ -8,11 +8,14 @@ import (
 	"time"
 
 	"gateway/internal/auth"
+	"gateway/internal/policy"
+	"gateway/internal/telemetry"
 	"github.com/golang-jwt/jwt/v5"
 )
 
 type AuthMiddleware struct {
-	jwksCache *auth.JWKSCache
+	jwksCache   *auth.JWKSCache
+	enforceZiti bool
 }
 
 type TokenClaims struct {
@@ -22,9 +25,10 @@ type TokenClaims struct {
 	Scope    string   `json:"scope"`
 }
 
-func NewAuthMiddleware(jwksURL string) *AuthMiddleware {
+func NewAuthMiddleware(jwksURL string, enforceZiti bool) *AuthMiddleware {
 	return &AuthMiddleware{
-		jwksCache: auth.NewJWKSCache(jwksURL, 5*time.Minute),
+		jwksCache:   auth.NewJWKSCache(jwksURL, 5*time.Minute),
+		enforceZiti: enforceZiti,
 	}
 }
 
@@ -52,6 +56,8 @@ func (m *AuthMiddleware) SecureAPI(next http.Handler) http.Handler {
 			return
 		}
 
+		dpopStart := time.Now()
+
 		// Xác định URI gọi thực tế
 		scheme := "http"
 		if r.TLS != nil {
@@ -71,6 +77,9 @@ func (m *AuthMiddleware) SecureAPI(next http.Handler) http.Handler {
 			http.Error(w, "invalid_dpop_proof: replay attack detected (jti already used)", http.StatusUnauthorized)
 			return
 		}
+		dpopTime := time.Since(dpopStart).Microseconds()
+
+		tokenStart := time.Now()
 
 		// 4. Xác thực Access Token JWT từ IdP
 		token, err := jwt.Parse(accessToken, func(t *jwt.Token) (interface{}, error) {
@@ -106,17 +115,42 @@ func (m *AuthMiddleware) SecureAPI(next http.Handler) http.Handler {
 			http.Error(w, "invalid_token: token jkt binding mismatch (sender-constraining failed)", http.StatusUnauthorized)
 			return
 		}
+		tokenTime := time.Since(tokenStart).Microseconds()
+
+		zitiStart := time.Now()
 
 		// 6. XÁC THỰC LIÊN TỤC mTLS - Đối chiếu danh tính mạng với Access Token
 		conn := GetConnFromContext(r.Context())
 		zitiIdentity := GetZitiIdentity(conn)
 		tokenSub, _ := claims["sub"].(string)
 
-		// Nếu chạy qua Ziti, bắt buộc identity mạng trùng khớp với token sub
-		if zitiIdentity != "" && tokenSub != zitiIdentity {
-			http.Error(w, fmt.Sprintf("forbidden: network identity '%s' does not match token subject '%s'", zitiIdentity, tokenSub), http.StatusForbidden)
-			return
+		// Nếu sử dụng Ziti, bắt buộc identity mạng trùng khớp với token sub
+		// Nếu zitiIdentity rỗng khi yêu cầu Ziti, từ chối luôn (fail-closed)
+		if m.enforceZiti {
+			if zitiIdentity == "" {
+				http.Error(w, "forbidden: missing OpenZiti network identity in a secure context", http.StatusForbidden)
+				return
+			}
+			if tokenSub != zitiIdentity {
+				http.Error(w, fmt.Sprintf("forbidden: network identity '%s' does not match token subject '%s'", zitiIdentity, tokenSub), http.StatusForbidden)
+				return
+			}
+		} else {
+			// Chế độ debug/fallback: Nếu có zitiIdentity thì vẫn kiểm tra trùng khớp
+			if zitiIdentity != "" && tokenSub != zitiIdentity {
+				http.Error(w, fmt.Sprintf("forbidden: network identity '%s' does not match token subject '%s'", zitiIdentity, tokenSub), http.StatusForbidden)
+				return
+			}
 		}
+		zitiTime := time.Since(zitiStart).Microseconds()
+
+		// Gắn các chỉ số hiệu năng vào HTTP Response Headers
+		w.Header().Set("X-Perf-Dpop-Verify-Us", fmt.Sprintf("%d", dpopTime))
+		w.Header().Set("X-Perf-Token-Verify-Us", fmt.Sprintf("%d", tokenTime))
+		w.Header().Set("X-Perf-Ziti-Verify-Us", fmt.Sprintf("%d", zitiTime))
+
+		// Ghi nhận vào Prometheus Exporter
+		telemetry.RecordSecurityOverhead(dpopTime, tokenTime, zitiTime)
 
 		// Trích xuất claims hợp lệ và đưa vào context của request
 		tenantID, _ := claims["tenant_id"].(string)
@@ -168,3 +202,39 @@ func GetClaimsFromContext(ctx context.Context) (TokenClaims, bool) {
 	claims, ok := ctx.Value(ClaimsKey).(TokenClaims)
 	return claims, ok
 }
+
+// EnforcePolicy acts as the PEP, extracting resource and action and querying the PDP
+func (m *AuthMiddleware) EnforcePolicy(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		claims, ok := GetClaimsFromContext(r.Context())
+		if !ok {
+			http.Error(w, "unauthorized: missing claims context", http.StatusUnauthorized)
+			return
+		}
+
+		// Map path to resource
+		resource := "unknown"
+		if strings.HasPrefix(r.URL.Path, "/api/balance") {
+			resource = "balance"
+		} else if strings.HasPrefix(r.URL.Path, "/api/transfer") {
+			resource = "transfer"
+		} else if strings.HasPrefix(r.URL.Path, "/api/audit-logs") {
+			resource = "audit-logs"
+		}
+
+		// Map HTTP method to Action
+		action := "READ"
+		if r.Method == "POST" || r.Method == "PUT" || r.Method == "DELETE" {
+			action = "CREATE"
+		}
+
+		// Query the PDP
+		if !policy.Evaluate(claims.Role, resource, action) {
+			http.Error(w, fmt.Sprintf("forbidden: PEP denied access to resource '%s' for role '%s'", resource, claims.Role), http.StatusForbidden)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
