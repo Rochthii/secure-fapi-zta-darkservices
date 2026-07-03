@@ -54,7 +54,7 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 2. Xác thực PKCE
-	codeChallenge, ok := store.GetStore().GetAndRemoveAuthCode(code)
+	codeChallenge, clientID, ok := store.GetStore().GetAndRemoveAuthCode(code)
 	if !ok {
 		http.Error(w, "invalid_grant: authorization code is invalid or expired", http.StatusBadRequest)
 		return
@@ -95,11 +95,25 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 	tokenExpiration := 60 * time.Second // Hạn dùng cực ngắn 60s
 	now := time.Now()
 
+	// Xác định tenant_id và role động dựa trên clientID của thiết bị ghi danh
+	tenantID := "88888888-8888-8888-8888-888888888888"
+	role := "guest"
+	if clientID == "client-alice" {
+		tenantID = "11111111-1111-1111-1111-111111111111"
+		role = "operator"
+	} else if clientID == "client-bob" {
+		tenantID = "22222222-2222-2222-2222-222222222222"
+		role = "viewer"
+	} else if clientID == "client-evil" {
+		tenantID = "66666666-6666-6666-6666-666666666666"
+		role = "attacker"
+	}
+
 	claims := jwt.MapClaims{
 		"iss":       config.AppConfig.Issuer,
-		"sub":       "user-123456", // Định danh người dùng
-		"tenant_id": "88888888-8888-8888-8888-888888888888", // Định danh tenant giả lập
-		"role":      "operator",
+		"sub":       clientID, // Định danh thiết bị Client
+		"tenant_id": tenantID,
+		"role":      role,
 		"scope":     "transfer balance",
 		"exp":       now.Add(tokenExpiration).Unix(),
 		"iat":       now.Unix(),
