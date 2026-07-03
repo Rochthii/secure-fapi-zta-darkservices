@@ -60,31 +60,31 @@ secure-fapi-zta-darkservices/
 ├── gateway/                            # API Gateway — Dark Service (Go Module)
 │   ├── go.mod
 │   ├── go.sum
-│   ├── main.go                         # Entry: Ziti bind + HTTP serve
-│   ├── middleware/
-│   │   ├── dpop.go                     # DPoP middleware
-│   │   ├── mtls.go                     # mTLS middleware
-│   │   ├── rls_context.go              # RLS context injection
-│   │   └── chain.go                    # Middleware chaining
-│   ├── handler/
-│   │   ├── transfer.go                 # POST /api/transfer
-│   │   ├── balance.go                  # GET /api/balance
-│   │   └── health.go                   # GET /api/health
-│   ├── db/
-│   │   └── postgres.go                 # Connection pool + SET LOCAL
-│   └── audit/
-│       ├── worm.go                     # WORM hash-chain writer
-│       └── worm_test.go                # WORM integrity tests
+│   ├── main.go                         # Entry: Ziti listener + router setup
+│   ├── internal/
+│   │   ├── api/
+│   │   │   └── handlers.go             # API Handlers (balance, transfer, audit-logs)
+│   │   ├── audit/
+│   │   │   └── db.go                   # DB connection + RLS context injection
+│   │   ├── auth/
+│   │   │   ├── crypto.go               # JWKS cache + DPoP proof verify
+│   │   │   └── jti.go                  # JTI anti-replay cache
+│   │   ├── middleware/
+│   │   │   ├── auth.go                 # SecureAPI + RequireRole middlewares
+│   │   │   └── conn.go                 # Ziti identity extraction helper
+│   │   └── ziti/
+│   │       └── ziti.go                 # OpenZiti Go SDK Listener binding
+│   └── build/
 │
 ├── client/                             # Client Application (Go Module)
 │   ├── go.mod
 │   ├── go.sum
-│   ├── main.go                         # Entry: auth flow + transaction
-│   ├── auth/
-│   │   ├── pkce.go                     # PKCE code_verifier generation
-│   │   └── dpop.go                     # DPoP keypair + proof signing
+│   ├── main.go                         # Entry: CLI PKCE + DPoP exchange + Ziti requests
+│   ├── crypto/
+│   │   └── crypto.go                   # Client-side PKCE & DPoP proof generator
 │   └── ziti/
-│       └── dialer.go                   # Ziti SDK connection
+│       └── ziti.go                     # Client-side OpenZiti SDK Dial transport
+
 │
 ├── scripts/                            # Automation Scripts
 │   ├── setup-ziti-services.sh          # Create Ziti services + policies
