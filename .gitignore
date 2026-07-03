@@ -1,6 +1,9 @@
 # CodeGraph index files
 .codegraph/
 
+# Local Go Compiler
+go-local/
+
 # Compiled Go Binaries
 build/
 bin/
