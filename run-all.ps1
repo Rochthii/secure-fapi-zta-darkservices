@@ -5,6 +5,33 @@ Write-Host "Starting Secure FAPI-ZTA & Dark Services System..." -ForegroundColor
 # Append Go path locally to be safe
 $env:Path = "e:\Projects\Project_TN\secure-fapi-zta-darkservices\go-local\go\bin;" + $env:Path
 
+# Step 0: Ensure Docker Desktop is running
+Write-Host "Step 0: Checking Docker Daemon status..." -ForegroundColor Yellow
+$dockerCheck = & docker info 2>&1
+if ($dockerCheck -like "*error during connect*" -or $dockerCheck -like "*is the docker daemon running*") {
+    Write-Host "Docker is not running. Attempting to start Docker Desktop..." -ForegroundColor Yellow
+    $dockerPath = "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+    if (Test-Path $dockerPath) {
+        Start-Process $dockerPath
+        Write-Host "Waiting for Docker Daemon to initialize (this may take up to 30 seconds)..." -ForegroundColor Yellow
+        while ($true) {
+            Start-Sleep -Seconds 5
+            $check = & docker info 2>&1
+            if ($check -notlike "*error during connect*" -and $check -notlike "*is the docker daemon running*") {
+                Write-Host "Docker Daemon is active!" -ForegroundColor Green
+                break
+            }
+            Write-Host "Still waiting for Docker Daemon to start..." -ForegroundColor Gray
+        }
+    } else {
+        Write-Warning "Docker Desktop executable not found at default location: $dockerPath"
+        Write-Warning "Please start Docker Desktop manually before running this script."
+        Read-Host "Press ENTER after starting Docker Desktop to continue..."
+    }
+} else {
+    Write-Host "Docker Daemon is active." -ForegroundColor Green
+}
+
 # Step 1: Start Docker infrastructure
 Write-Host "Step 1: Starting Docker containers (Ziti Overlay + PostgreSQL + Telemetry)..." -ForegroundColor Yellow
 docker compose -f docker/docker-compose.yml up -d
