@@ -57,6 +57,8 @@
 | DPOP-08 | Different keypair | Sign with key not matching cnf.jkt | ❌ 401 |
 | DPOP-09 | Malformed JWT | Invalid JSON in payload | ❌ 401 |
 | DPOP-10 | Missing jwk in header | No public key embedded | ❌ 401 |
+| DPOP-11 | Valid proof with nonce | Include matching server nonce in proof | ✅ 200 OK |
+| DPOP-12 | Invalid / Missing nonce | Include wrong or expired server nonce | ❌ 401 (Use DPoP-Nonce header) |
 
 ---
 
