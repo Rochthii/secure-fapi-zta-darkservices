@@ -31,3 +31,8 @@ vendor/
 *.njsproj
 *.sln
 *.sw?
+
+# Ziti identities and tokens
+docker/tokens/
+docker/identities/
+
