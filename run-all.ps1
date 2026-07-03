@@ -36,17 +36,32 @@ if ($dockerCheck -like "*error during connect*" -or $dockerCheck -like "*is the 
 Write-Host "Step 1: Starting Docker containers (Ziti Overlay + PostgreSQL + Telemetry)..." -ForegroundColor Yellow
 docker compose -f docker/docker-compose.yml up -d
 
-# Step 2: Start IdP in a new window
-Write-Host "Step 2: Starting Identity Provider (IdP) on port 8081..." -ForegroundColor Yellow
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "`$env:Path = 'e:\Projects\Project_TN\secure-fapi-zta-darkservices\go-local\go\bin;' + `$env:Path; cd idp; go run main.go"
+# Step 2: Start IdP in a new window (only if port 8081 is free)
+$idpUsed = Get-NetTCPConnection -LocalPort 8081 -ErrorAction SilentlyContinue
+if ($null -eq $idpUsed) {
+    Write-Host "Step 2: Starting Identity Provider (IdP) on port 8081..." -ForegroundColor Yellow
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", "`$env:Path = 'e:\Projects\Project_TN\secure-fapi-zta-darkservices\go-local\go\bin;' + `$env:Path; cd idp; go run main.go"
+} else {
+    Write-Host "Identity Provider (IdP) is already running on port 8081." -ForegroundColor Green
+}
 
-# Step 3: Start API Gateway in a new window
-Write-Host "Step 3: Starting API Gateway on port 8080 (Debug Mode)..." -ForegroundColor Yellow
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "`$env:Path = 'e:\Projects\Project_TN\secure-fapi-zta-darkservices\go-local\go\bin;' + `$env:Path; cd gateway; `$env:USE_ZITI = 'false'; go run main.go"
+# Step 3: Start API Gateway in a new window (only if port 8080 is free)
+$gwUsed = Get-NetTCPConnection -LocalPort 8080 -ErrorAction SilentlyContinue
+if ($null -eq $gwUsed) {
+    Write-Host "Step 3: Starting API Gateway on port 8080 (Debug Mode)..." -ForegroundColor Yellow
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", "`$env:Path = 'e:\Projects\Project_TN\secure-fapi-zta-darkservices\go-local\go\bin;' + `$env:Path; cd gateway; `$env:USE_ZITI = 'false'; go run main.go"
+} else {
+    Write-Host "API Gateway is already running on port 8080." -ForegroundColor Green
+}
 
-# Step 4: Start Next.js Dashboard in a new window
-Write-Host "Step 4: Starting Cyber SOC Dashboard on port 3001..." -ForegroundColor Yellow
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd dashboard; npm run dev -- -p 3001"
+# Step 4: Start Next.js Dashboard in a new window (only if port 3001 is free)
+$dbUsed = Get-NetTCPConnection -LocalPort 3001 -ErrorAction SilentlyContinue
+if ($null -eq $dbUsed) {
+    Write-Host "Step 4: Starting Cyber SOC Dashboard on port 3001..." -ForegroundColor Yellow
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd dashboard; npm run dev -- -p 3001"
+} else {
+    Write-Host "Cyber SOC Dashboard is already running on port 3001." -ForegroundColor Green
+}
 
 Write-Host "All components successfully launched in separate windows!" -ForegroundColor Green
 Write-Host "API Gateway: http://localhost:8080" -ForegroundColor Cyan
