@@ -69,9 +69,17 @@ secure-fapi-zta-darkservices/
 
 ## Hướng dẫn Cài đặt & Khởi chạy (Chế độ Local Debug)
 
-Để chạy thử nghiệm liên kết 3 thành phần (IdP - Gateway - Client) trên máy local, hãy làm theo các bước dưới đây:
+### Cách 1: Khởi chạy nhanh toàn bộ dự án bằng 1 câu lệnh duy nhất
+Dự án cung cấp sẵn tập lệnh PowerShell để khởi chạy đồng thời cụm Docker, Identity Provider (IdP), API Gateway và Dashboard Next.js chỉ bằng 1 câu lệnh:
+```powershell
+./run-all.ps1
+```
+Tập lệnh sẽ tự động khởi tạo các tài nguyên và mở các cửa sổ PowerShell riêng biệt chạy nền cho từng tiến trình, giúp dễ dàng theo dõi logs và quản trị.
 
-### Bước 1: Khởi chạy hạ tầng Docker
+### Cách 2: Khởi chạy thủ công từng cấu phần
+Nếu muốn chạy thủ công từng thành phần, hãy làm theo các bước dưới đây:
+
+#### Bước 1: Khởi chạy hạ tầng Docker
 Yêu cầu máy cài sẵn Docker và Docker Compose. Chạy lệnh sau để bật Ziti và PostgreSQL:
 ```bash
 docker compose -f docker/docker-compose.yml up -d
