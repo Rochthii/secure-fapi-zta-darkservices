@@ -50,12 +50,14 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY audit_tenant_isolation ON audit_logs
-    FOR SELECT
+    FOR ALL
     TO app_user
-    USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid);
+    USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid)
+    WITH CHECK (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid);
 
--- Cấp quyền ghi và đọc cho app_user trên bảng audit_logs
+-- Cấp quyền ghi và đọc cho app_user trên bảng audit_logs và sequence đi kèm
 GRANT SELECT, INSERT ON audit_logs TO app_user;
+GRANT USAGE, SELECT ON SEQUENCE audit_logs_id_seq TO app_user;
 
 -- 4. RÀNG BUỘC WORM (Write Once, Read Many) - Chặn UPDATE & DELETE
 CREATE OR REPLACE FUNCTION prevent_audit_tampering()

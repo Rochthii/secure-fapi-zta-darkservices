@@ -82,7 +82,7 @@ func (c *DBClient) CreateTransaction(tenantID string, amount float64, descriptio
 	defer tx.Rollback()
 
 	// 1. Inject Tenant Context for RLS
-	_, err = tx.Exec("SET LOCAL app.tenant_id = $1", tenantID)
+	_, err = tx.Exec("SELECT set_config('app.tenant_id', $1, true)", tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set RLS tenant context: %w", err)
 	}
@@ -131,7 +131,7 @@ func (c *DBClient) GetBalance(tenantID string, actorSub string) (float64, error)
 	defer tx.Rollback()
 
 	// 1. Inject Tenant Context for RLS
-	_, err = tx.Exec("SET LOCAL app.tenant_id = $1", tenantID)
+	_, err = tx.Exec("SELECT set_config('app.tenant_id', $1, true)", tenantID)
 	if err != nil {
 		return 0, fmt.Errorf("failed to set RLS tenant context: %w", err)
 	}
@@ -168,7 +168,7 @@ func (c *DBClient) GetAuditLogs(tenantID string) ([]AuditLog, error) {
 	defer tx.Rollback()
 
 	// 1. Inject Tenant Context for RLS
-	_, err = tx.Exec("SET LOCAL app.tenant_id = $1", tenantID)
+	_, err = tx.Exec("SELECT set_config('app.tenant_id', $1, true)", tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set RLS tenant context: %w", err)
 	}
