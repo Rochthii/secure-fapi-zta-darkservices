@@ -169,4 +169,34 @@ Step 5: Manually corrupt record #50 hash (via superuser)
 
 ---
 
+## 15.9 Chi tiết 3 Kịch bản Tấn công Thực nghiệm (Deep Security Scenarios)
+
+### Kịch bản 1: Tấn công Đánh cắp Token (Token Theft Attack)
+*   **Mô tả:** Giả lập Hacker bắt trích xuất được `access_token` hợp lệ của Alice từ log hoặc bộ nhớ. Hacker cố gắng dùng một máy khác để gọi API chuyển tiền của Alice bằng cách ký DPoP Proof bằng cặp khóa riêng khác của Hacker.
+*   **Cơ chế bảo vệ:** Gateway kiểm tra mã băm `cnf.jkt` trong token (được tính từ khóa công khai ban đầu của Alice) và đối chiếu với khóa công khai trong tiêu đề DPoP JWT gửi lên. Khi phát hiện bất khớp, Gateway trả về `401 Unauthorized` với lý do `cnf.jkt thumbprint mismatch`.
+*   **Lệnh mô phỏng thực tế:**
+    1.  Alice lấy Access Token thành công.
+    2.  Hacker tạo DPoP Proof ký bằng khóa riêng của Hacker và gửi kèm Access Token của Alice.
+    3.  Gateway từ chối giao dịch: `"DPoP binding validation failed"`.
+
+### Kịch bản 2: Tấn công Chiếm đoạt Đường truyền (Overlay Hijack / Identity Spoofing)
+*   **Mô tả:** Giả lập Bob là một thành viên hợp lệ trong mạng overlay OpenZiti (được phép Dial). Bob thực hiện đánh cắp `access_token` và khóa riêng DPoP của Alice, sau đó gửi yêu cầu chuyển tiền từ tài khoản của Alice thông qua thiết bị mạng ảo của Bob (`client-bob`).
+*   **Cơ chế bảo vệ:** Middleware xác thực mạng ảo tại Gateway gọi hàm `SourceIdentifier()` trên kết nối mTLS trích xuất ra danh tính mạng ảo gửi lên là `client-bob`, trong khi mã định danh `sub` trong token yêu cầu là `client-alice`. Gateway lập tức chặn đứng vì lệch danh tính chéo lớp mạng-ứng dụng.
+*   **Lệnh mô phỏng thực tế:**
+    1.  Bob kết nối qua VPN Ziti của Bob.
+    2.  Bob gửi request kèm Token của Alice.
+    3.  Gateway chặn giao dịch: `"network identity mismatch: connection is client-bob, but token sub is client-alice"`.
+
+### Kịch bản 3: Tấn công Sửa Log Database (Audit Tampering Attack)
+*   **Mô tả:** Kẻ tấn công hoặc quản trị viên (Admin) độc hại có quyền truy cập trực tiếp vào Postgres container và thực hiện câu lệnh SQL `UPDATE` hoặc `DELETE` để xóa dấu vết chuyển tiền hoặc làm gián đoạn tính toàn vẹn của chuỗi log.
+*   **Cơ chế bảo vệ:** 
+    *   Trigger `prevent_audit_tampering` chặn toàn bộ lệnh sửa/xóa và trả về lỗi SQL `42501 (immutable)`.
+    *   Hàm hash-chain tự động tính toán mã hóa liên kết SHA-256 (`block_hash` bản ghi N phụ thuộc vào `block_hash` bản ghi N-1). Nếu kẻ xấu cố tình chèn đè log bằng quyền superuser trực tiếp, chuỗi liên kết sẽ bị gãy ở các bản ghi sau và bị phát hiện ngay lập tức trong quá trình chạy audit check.
+*   **Lệnh mô phỏng thực tế:**
+    1.  Chạy lệnh SQL sửa đổi trực tiếp: `UPDATE audit_logs SET action = 'HACKED' WHERE id = 3;`
+    2.  Kết quả DB báo lỗi: `ERROR: Audit logs are immutable (WORM)`.
+
+---
+
 > **Next:** [PART 16 — Final Master Plan](./16_FINAL_MASTER_PLAN.md)
+

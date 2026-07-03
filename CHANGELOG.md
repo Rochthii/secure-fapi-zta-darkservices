@@ -28,13 +28,14 @@ Tài liệu này ghi nhận toàn bộ lịch sử thay đổi, nâng cấp và 
 
 ### Changed
 - **Bảo mật**: Cập nhật [.gitignore](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/.gitignore) để phớt lờ thư mục `docker/tokens/` và `docker/identities/` chứa khóa mật mã học.
-- **Tài liệu**: Cập nhật [docs/14_PROJECT_STRUCTURE.md](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/docs/14_PROJECT_STRUCTURE.md) khớp với cấu trúc mã nguồn Go thực tế.
+- **Tài liệu**: Cập nhật [docs/14_PROJECT_STRUCTURE.md](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/docs/14_PROJECT_STRUCTURE.md) khớp với cấu trúc thực tế và bổ sung mô tả 3 kịch bản tấn công thực nghiệm (Token Theft, Overlay Hijack, Audit Tampering) vào [docs/15_VALIDATION_BENCHMARK.md](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/docs/15_VALIDATION_BENCHMARK.md).
 - **Quy trình Lộ trình**: Đẩy Giai đoạn 6 (Validation & Testing) lên trước Giai đoạn 7 (Observability) trong [13_IMPLEMENTATION_ROADMAP.md](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/docs/13_IMPLEMENTATION_ROADMAP.md) và [16_FINAL_MASTER_PLAN.md](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/docs/16_FINAL_MASTER_PLAN.md).
-- **Sanitization**: Làm sạch file `.agent/skills/skill-api-design.md` loại bỏ key ví dụ `sk_live_abc123` để triệt tiêu cảnh báo bảo mật từ GitHub.
+- **Sanitization & Fixes**: Làm sạch ví dụ key `sk_live` chống báo động giả trên GitHub, đổi `SET LOCAL` thành `SELECT set_config(...)` để sửa lỗi binding tham số trong Go, và phân quyền `SEQUENCE` + RLS `FOR ALL` trên bảng log WORM trong database.
 
 ### Security Validation
 - Chạy thử nghiệm **Ziti Policy Advisor** kiểm thử quyền mạng ảo. Kết quả: `client-alice` và `client-bob` được thông qua (`Dial: Y`), `client-evil` bị từ chối kết nối ngay ở lớp mạng ảo overlay (`Dial: N`).
 - Kiểm thử biên dịch thành công cả hai module `gateway` và `client` trên compiler Go 1.25.0.
+- Kiểm thử chạy thật thành công luồng E2E ở chế độ Local Debug: Alice truy vấn số dư (HTTP 200), thực hiện giao dịch chuyển tiền (HTTP 201), tra cứu log liên kết mật mã học dạng blockchain (WORM), đồng thời cô lập hoàn toàn tuyệt đối dữ liệu so với Bob (RLS).
 
 ---
 
