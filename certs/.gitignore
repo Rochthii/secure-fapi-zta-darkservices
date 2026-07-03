@@ -1,0 +1,5 @@
+# Loại trừ các khóa riêng tư và tệp serial phụ của OpenSSL
+**/*.key
+**/*.srl
+**/*.csr
+**/*.ext

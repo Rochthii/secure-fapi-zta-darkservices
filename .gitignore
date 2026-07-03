@@ -1,0 +1,30 @@
+# CodeGraph index files
+.codegraph/
+
+# Compiled Go Binaries
+build/
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Certificates (Exclude private keys specifically, allow certificates)
+**/*.key
+**/*.csr
+**/*.srl
+**/*.ext
+
+# Go workspace / local vendor
+go.work
+vendor/
+
+# IDE files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
