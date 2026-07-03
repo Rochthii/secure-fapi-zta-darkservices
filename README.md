@@ -154,6 +154,35 @@ Một giao diện trạm điều hành an ninh mạng độc lập, được thi
 - **WORM Ledger Log Stream:** Terminal hiển thị các log bất biến và chuỗi băm Hash-chain (block_hash & prev_hash) trực tiếp từ database.
 - **Crypto Latency Radar:** Đồ thị Recharts biểu diễn độ trễ xử lý mật mã của DPoP (signature verify) và database context set.
 
+#### Hình ảnh giao diện Cyber SOC Dashboard (Next.js)
+
+* **Màn hình giám sát tổng quan (Overview):**
+  ![Overview Dashboard](image-4.png)
+  
+* **Danh sách phiên định danh người dùng động (Users & Sessions):**
+  ![Users and Sessions](image-5.png)
+  
+* **Danh sách Client ID đăng ký (OAuth Clients):**
+  ![OAuth Clients](image-6.png)
+  
+* **Bản đồ luồng mạng tàng hình OpenZiti (Topology Fabric Map):**
+  ![Topology Fabric Map](image-7.png)
+  
+* **Quy tắc phân quyền chính sách ẩn (Service Policies):**
+  ![Stealth Service Policies](image-8.png)
+  
+* **Chi tiết thông số nút mạng (Node Details Slide Panel):**
+  ![Node Details Panel](image-9.png)
+  
+* **Ràng buộc DPoP & Chứng chỉ mTLS (Credentials Matrix):**
+  ![DPoP & mTLS Matrix](image-10.png)
+  
+* **Đo đạc độ trễ xử lý mật mã (Cryptography Radar):**
+  ![Cryptography Radar](image-11.png)
+  
+* **Kiểm tra và xác minh WORM Ledger (WORM Chain Explorer):**
+  ![WORM Chain Explorer](image-12.png)
+
 **Cách chạy:**
 1. Di chuyển vào thư mục dashboard:
    ```bash
