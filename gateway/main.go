@@ -20,7 +20,7 @@ func main() {
 	// 1. Tải cấu hình từ biến môi trường
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
-		dbURL = "host=localhost port=5432 user=app_user password=app_secure_password_2026 dbname=secure_ledger sslmode=disable"
+		dbURL = "host=localhost port=5432 user=app_user password=app_secure_password_2026 dbname=fapi_db sslmode=disable"
 	}
 
 	jwksURL := os.Getenv("IDP_JWKS_URL")
