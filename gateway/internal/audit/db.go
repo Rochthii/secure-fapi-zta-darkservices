@@ -10,7 +10,8 @@ import (
 )
 
 type DBClient struct {
-	db *sql.DB
+	db          *sql.DB
+	auditSecret string
 }
 
 type Transaction struct {
@@ -48,7 +49,7 @@ func GetUserUUID(sub string) string {
 }
 
 // NewDBClient initializes and checks a PostgreSQL connection pool
-func NewDBClient(connStr string) (*DBClient, error) {
+func NewDBClient(connStr string, auditSecret string) (*DBClient, error) {
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
@@ -64,7 +65,7 @@ func NewDBClient(connStr string) (*DBClient, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	return &DBClient{db: db}, nil
+	return &DBClient{db: db, auditSecret: auditSecret}, nil
 }
 
 // Close closes the database connection pool
@@ -79,13 +80,24 @@ func (c *DBClient) CreateTransaction(tenantID string, amount float64, descriptio
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to start database transaction: %w", err)
 	}
-	defer tx.Rollback()
 
-	// 1. Inject Tenant Context for RLS
+	// Active cleanup on return
+	defer func() {
+		if tx != nil {
+			_, _ = c.db.Exec("SELECT set_config('app.tenant_id', '', false); SELECT set_config('app.audit_secret', '', false);")
+			_ = tx.Rollback()
+		}
+	}()
+
+	// 1. Inject Tenant Context & Audit Secret
 	rlsStart := time.Now()
 	_, err = tx.Exec("SELECT set_config('app.tenant_id', $1, true)", tenantID)
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to set RLS tenant context: %w", err)
+	}
+	_, err = tx.Exec("SELECT set_config('app.audit_secret', $1, true)", c.auditSecret)
+	if err != nil {
+		return nil, 0, 0, fmt.Errorf("failed to set audit secret context: %w", err)
 	}
 	rlsTimeUs := time.Since(rlsStart).Microseconds()
 
@@ -121,6 +133,9 @@ func (c *DBClient) CreateTransaction(tenantID string, amount float64, descriptio
 	if err := tx.Commit(); err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to commit transaction: %w", err)
 	}
+
+	tx = nil
+	_, _ = c.db.Exec("SELECT set_config('app.tenant_id', '', false); SELECT set_config('app.audit_secret', '', false);")
 	dbExecTimeUs := time.Since(dbExecStart).Microseconds()
 
 	return &t, rlsTimeUs, dbExecTimeUs, nil
@@ -132,13 +147,23 @@ func (c *DBClient) GetBalance(tenantID string, actorSub string) (float64, int64,
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("failed to start database transaction: %w", err)
 	}
-	defer tx.Rollback()
 
-	// 1. Inject Tenant Context for RLS
+	defer func() {
+		if tx != nil {
+			_, _ = c.db.Exec("SELECT set_config('app.tenant_id', '', false); SELECT set_config('app.audit_secret', '', false);")
+			_ = tx.Rollback()
+		}
+	}()
+
+	// 1. Inject Tenant Context & Audit Secret
 	rlsStart := time.Now()
 	_, err = tx.Exec("SELECT set_config('app.tenant_id', $1, true)", tenantID)
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("failed to set RLS tenant context: %w", err)
+	}
+	_, err = tx.Exec("SELECT set_config('app.audit_secret', $1, true)", c.auditSecret)
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("failed to set audit secret context: %w", err)
 	}
 	rlsTimeUs := time.Since(rlsStart).Microseconds()
 
@@ -162,6 +187,9 @@ func (c *DBClient) GetBalance(tenantID string, actorSub string) (float64, int64,
 	if err := tx.Commit(); err != nil {
 		return 0, 0, 0, fmt.Errorf("failed to commit transaction: %w", err)
 	}
+
+	tx = nil
+	_, _ = c.db.Exec("SELECT set_config('app.tenant_id', '', false); SELECT set_config('app.audit_secret', '', false);")
 	dbExecTimeUs := time.Since(dbExecStart).Microseconds()
 
 	return balance, rlsTimeUs, dbExecTimeUs, nil
@@ -173,13 +201,23 @@ func (c *DBClient) GetAuditLogs(tenantID string) ([]AuditLog, int64, int64, erro
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to start database transaction: %w", err)
 	}
-	defer tx.Rollback()
 
-	// 1. Inject Tenant Context for RLS
+	defer func() {
+		if tx != nil {
+			_, _ = c.db.Exec("SELECT set_config('app.tenant_id', '', false); SELECT set_config('app.audit_secret', '', false);")
+			_ = tx.Rollback()
+		}
+	}()
+
+	// 1. Inject Tenant Context & Audit Secret
 	rlsStart := time.Now()
 	_, err = tx.Exec("SELECT set_config('app.tenant_id', $1, true)", tenantID)
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to set RLS tenant context: %w", err)
+	}
+	_, err = tx.Exec("SELECT set_config('app.audit_secret', $1, true)", c.auditSecret)
+	if err != nil {
+		return nil, 0, 0, fmt.Errorf("failed to set audit secret context: %w", err)
 	}
 	rlsTimeUs := time.Since(rlsStart).Microseconds()
 
@@ -207,6 +245,9 @@ func (c *DBClient) GetAuditLogs(tenantID string) ([]AuditLog, int64, int64, erro
 	if err := tx.Commit(); err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to commit transaction: %w", err)
 	}
+
+	tx = nil
+	_, _ = c.db.Exec("SELECT set_config('app.tenant_id', '', false); SELECT set_config('app.audit_secret', '', false);")
 	dbExecTimeUs := time.Since(dbExecStart).Microseconds()
 
 	return logs, rlsTimeUs, dbExecTimeUs, nil

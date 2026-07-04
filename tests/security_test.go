@@ -455,6 +455,12 @@ func Test6_WORMLedgerImmutability(t *testing.T) {
 		t.Fatalf("Database ping failed: %v", err)
 	}
 
+	// Set session-level app.audit_secret first to satisfy database constraints and trigger HMAC verification
+	_, err = db.Exec("SELECT set_config('app.audit_secret', 'test-audit-secret-key-2026', false)")
+	if err != nil {
+		t.Fatalf("Failed to set app.audit_secret context: %v", err)
+	}
+
 	// Insert a dummy log record first to ensure the row-level trigger fires on it
 	var logID int64
 	err = db.QueryRow(`INSERT INTO audit_logs (actor_id, tenant_id, action, resource, details, prev_hash, block_hash) 

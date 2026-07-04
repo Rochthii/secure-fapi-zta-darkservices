@@ -72,13 +72,20 @@ CREATE TRIGGER audit_log_immutable
     FOR EACH ROW
     EXECUTE FUNCTION prevent_audit_tampering();
 
--- 5. HÀM TỰ ĐỘNG TÍNH HASH-CHAIN (SHA-256)
+-- 5. HÀM TỰ ĐỘNG TÍNH HASH-CHAIN (HMAC-SHA256)
 CREATE OR REPLACE FUNCTION hash_audit_record()
 RETURNS TRIGGER AS $$
 DECLARE
     last_block_hash CHAR(64);
     concat_text TEXT;
+    audit_secret TEXT;
 BEGIN
+    -- Lấy audit secret từ context session
+    audit_secret := NULLIF(current_setting('app.audit_secret', true), '');
+    IF audit_secret IS NULL THEN
+        RAISE EXCEPTION 'Audit secret is missing or invalid. Integrity check failed.';
+    END IF;
+
     -- Lấy hash của bản ghi liền trước (bản ghi có id lớn nhất)
     SELECT block_hash INTO last_block_hash
     FROM audit_logs
@@ -94,7 +101,6 @@ BEGIN
     NEW.prev_hash := last_block_hash;
 
     -- Chuỗi ghép để tính hash (id + timestamp + actor + action + resource + details + prev_hash)
-    -- Sử dụng NEW.timestamp và NEW.details dưới dạng chuỗi chuẩn hóa
     concat_text := COALESCE(NEW.timestamp::text, '') || '|' ||
                    COALESCE(NEW.actor_id::text, '') || '|' ||
                    COALESCE(NEW.tenant_id::text, '') || '|' ||
@@ -103,8 +109,8 @@ BEGIN
                    COALESCE(NEW.details::text, '{}') || '|' ||
                    NEW.prev_hash;
 
-    -- Tính toán mã hash SHA-256 bằng pgcrypto và chuyển thành dạng hex
-    NEW.block_hash := encode(digest(concat_text, 'sha256'), 'hex');
+    -- Tính toán mã hash HMAC-SHA256 bằng pgcrypto sử dụng secret key
+    NEW.block_hash := encode(hmac(concat_text, audit_secret, 'sha256'), 'hex');
 
     RETURN NEW;
 END;

@@ -57,7 +57,11 @@ func main() {
 	enforceZiti := useZiti || strings.EqualFold(strings.TrimSpace(os.Getenv("ENFORCE_ZITI")), "true")
 
 	// 2. Khởi tạo Database client và kết nối
-	dbClient, err := audit.NewDBClient(dbURL)
+	auditSecret := os.Getenv("AUDIT_SECRET")
+	if auditSecret == "" {
+		auditSecret = "test-audit-secret-key-2026" // Default fallback for local dev
+	}
+	dbClient, err := audit.NewDBClient(dbURL, auditSecret)
 	if err != nil {
 		log.Fatalf("DATABASE ERROR: Failed to connect to database: %v", err)
 	}
