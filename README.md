@@ -182,6 +182,9 @@ Một giao diện trạm điều hành an ninh mạng độc lập, được thi
   
 * **Kiểm tra và xác minh WORM Ledger (WORM Chain Explorer):**
   ![WORM Chain Explorer](image-12.png)
+  
+* **Đo lường độ trễ & Live Benchmark (Performance & Benchmark):**
+  ![Performance & Benchmark](image-13.png)
 
 **Cách chạy:**
 1. Di chuyển vào thư mục dashboard:

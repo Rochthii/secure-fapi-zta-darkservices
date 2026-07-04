@@ -11,7 +11,7 @@ Tài liệu này ghi nhận toàn bộ lịch sử thay đổi, nâng cấp và 
 ![alt text](image-10.png)
 ![alt text](image-11.png)
 ![alt text](image-12.png)
-
+![alt text](image-13.png)
 
 
 ## [Nâng Cấp Kiểm Thử Bảo Mật Thực Nghiệm & Tích Hợp UI Giám Sát Hiệu Năng] — 2026-07-04
