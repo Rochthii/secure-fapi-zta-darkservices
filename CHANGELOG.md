@@ -14,7 +14,7 @@ Tài liệu này ghi nhận toàn bộ lịch sử thay đổi, nâng cấp và 
 ![alt text](image-13.png)
 
 
-## [Nâng Cấp Kiểm Thử Bảo Mật Thực Nghiệm & Tích Hợp UI Giám Sát Hiệu Năng] — 2026-07-04
+## [Nâng Cấp Bảo Mật Thực Nghiệm & Tích Hợp UI Giám Sát Hiệu Năng] — 2026-07-04
 
 ### Added
 - **API Benchmark Backend (`/api/benchmark`)**:
@@ -24,14 +24,19 @@ Tài liệu này ghi nhận toàn bộ lịch sử thay đổi, nâng cấp và 
   - Tích hợp tab giám sát hiệu năng trực quan vào Cyber SOC Dashboard.
   - Vẽ biểu đồ diện tích xếp chồng (Recharts Area Chart) thể hiện realtime thời gian xử lý của các lớp trong Gateway: *DPoP Verify, Token JWKS, Postgres RLS, WORM Hash/Write*.
   - Tích hợp nút bấm Live Benchmark Test Console hỗ trợ kích hoạt stress test 50 giao dịch song song và hiển thị báo cáo hiệu năng thời gian thực (RPS, Latency Min/Max/Avg, P95, Success Rate).
+- **Mã hóa chuỗi băm WORM logs bằng HMAC-SHA256**:
+  - Chuyển đổi trigger `hash_audit_record` từ SHA-256 đối xứng thông thường sang `HMAC-SHA256` sử dụng session-key `app.audit_secret` do Gateway cấp phát động trong transaction. Ngăn ngừa tuyệt đối tấn công tính toán lại chuỗi log.
 
 ### Changed
 - **Chuẩn hóa Phân tích Cấu hình (Environment Parsing)**:
   - Nâng cấp [gateway/main.go](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/gateway/main.go) với cơ chế `strings.TrimSpace` cho các biến môi trường cấu hình Ziti/Enforcement để loại bỏ hoàn toàn các ký tự trống do trailing spaces trong CMD scripts.
+- **reset session context trong Connection Pool**:
+  - Nâng cấp DB Client của Gateway chủ động chạy lệnh `SELECT set_config('app.tenant_id', '', false)` và `SELECT set_config('app.audit_secret', '', false)` tại khối dọn dẹp `defer` của mọi transaction. Đảm bảo triệt tiêu hoàn toàn rủi ro rò rỉ dữ liệu chéo Tenant trong `pgxpool`.
 
 ### Fixed
 - **Bảo mật và Độ chính xác kiểm thử**:
   - Khắc phục lỗi loop 404 redirect khi authorize bằng cách chỉ định đúng header `Accept: application/json` trong request gửi tới IdP.
+  - Vá lỗi kiểm thử immutability `Test6` để nạp `audit_secret` hợp lệ trước khi chèn log dummy qua tài khoản superuser.
 
 ---
 
