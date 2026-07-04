@@ -112,6 +112,40 @@ export default function SOCDashboard() {
   const [benchmarkError, setBenchmarkError] = useState("");
   const [cooldown, setCooldown] = useState(0);
 
+  // Attack Simulator states
+  const [isAttacking, setIsAttacking] = useState<string | null>(null);
+  const [attackSteps, setAttackSteps] = useState<string[]>([]);
+  
+  const runAttackSimulation = async (type: string) => {
+    if (isAttacking) return;
+    setIsAttacking(type);
+    setAttackSteps([`[INFO] Kích hoạt kịch bản tấn công giả lập: ${type.toUpperCase()}...`]);
+    
+    try {
+      const res = await fetch("/api/attack", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type })
+      });
+      if (!res.ok) {
+        throw new Error(`Attack execution failed (Status ${res.status})`);
+      }
+      const json = await res.json();
+      if (json.status === "success" && json.logs) {
+        for (let i = 0; i < json.logs.length; i++) {
+          await new Promise(r => setTimeout(r, 500));
+          setAttackSteps(prev => [...prev, json.logs[i]]);
+        }
+      } else {
+        throw new Error(json.message || "Simulation failed");
+      }
+    } catch (e: any) {
+      setAttackSteps(prev => [...prev, `[ERROR] Tấn công thất bại: ${e.message}`]);
+    } finally {
+      setIsAttacking(null);
+    }
+  };
+
   const runBenchmark = async () => {
     if (cooldown > 0 || isBenchmarking) return;
     setIsBenchmarking(true);
@@ -529,7 +563,8 @@ export default function SOCDashboard() {
               <div className="px-6 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Security SIEM</div>
               <nav className="space-y-0.5 px-3">
                 {[
-                  { id: "threats", label: "Live Threat Feed", icon: Terminal }
+                  { id: "threats", label: "Live Threat Feed", icon: Terminal },
+                  { id: "attacks", label: "Attack Simulator (Cyber Range)", icon: ShieldAlert }
                 ].map(item => (
                   <button
                     key={item.id}
@@ -1419,6 +1454,109 @@ export default function SOCDashboard() {
                     ))
                   )}
                   <div ref={terminalEndRef} />
+                </div>
+              </div>
+            )}
+
+            {/* TAB: ATTACK SIMULATOR */}
+            {activeTab === "attacks" && (
+              <div className="flex-1 flex flex-col bg-[#080d16] rounded-xl border border-[#132237] p-6 space-y-4 overflow-y-auto">
+                <h2 className="text-sm font-bold uppercase tracking-wider text-red-500 flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 animate-pulse" /> Cyber Range & Security Attack Simulator
+                </h2>
+                <p className="text-xs text-zinc-400">
+                  Kích hoạt các kịch bản tấn công giả lập vật lý thực tế lên API Gateway và Database để xác minh và kiểm chứng cơ chế tự động phòng thủ Zero-Trust.
+                </p>
+
+                <div className="grid grid-cols-3 gap-6 flex-1 min-h-[300px]">
+                  
+                  {/* Left Controls: Attack Cards */}
+                  <div className="col-span-1 flex flex-col space-y-3">
+                    {[
+                      {
+                        id: "replay",
+                        title: "DPoP Replay Attack",
+                        desc: "Gửi hai request trùng JTI mật mã học liên tiếp lên Gateway.",
+                        color: "border-yellow-500/20 hover:border-yellow-500/50"
+                      },
+                      {
+                        id: "spoof",
+                        title: "Client Spoofing",
+                        desc: "Sử dụng ID & Secret không tồn tại để xin cấp Access Token từ IdP.",
+                        color: "border-orange-500/20 hover:border-orange-500/50"
+                      },
+                      {
+                        id: "escape",
+                        title: "Tenant Isolation Escape",
+                        desc: "Bob cố tình đọc trộm số dư tài khoản của Alice thông qua RLS.",
+                        color: "border-purple-500/20 hover:border-purple-500/50"
+                      },
+                      {
+                        id: "tamper",
+                        title: "WORM Log Tampering",
+                        desc: "Thực hiện lệnh UPDATE trực tiếp vào DB để sửa log giao dịch.",
+                        color: "border-red-500/20 hover:border-red-500/50"
+                      }
+                    ].map(attack => (
+                      <div 
+                        key={attack.id} 
+                        className={`p-3 bg-[#0b121f] rounded-xl border ${attack.color} transition-all flex flex-col justify-between h-[100px]`}
+                      >
+                        <div>
+                          <div className="text-xs font-bold text-zinc-200">{attack.title}</div>
+                          <div className="text-[10px] text-zinc-500 mt-1 leading-tight">{attack.desc}</div>
+                        </div>
+                        <button
+                          disabled={isAttacking !== null}
+                          onClick={() => {
+                            runAttackSimulation(attack.id);
+                            setHealthStatus("UNDER ATTACK");
+                            setTimeout(() => setHealthStatus("HEALTHY"), 4000);
+                          }}
+                          className={`mt-2 py-1 rounded text-[10px] font-bold tracking-wider transition-all uppercase border ${
+                            isAttacking === attack.id
+                              ? "bg-red-950 text-red-400 border-red-500/40 animate-pulse cursor-not-allowed"
+                              : isAttacking !== null
+                              ? "bg-zinc-800 text-zinc-600 border-zinc-700 cursor-not-allowed"
+                              : "bg-red-950/20 text-red-400 border-red-500/20 hover:bg-red-950/80"
+                          }`}
+                        >
+                          {isAttacking === attack.id ? "Simulating..." : "Execute Attack"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Right Console Output */}
+                  <div className="col-span-2 flex flex-col bg-zinc-950 border border-zinc-900 rounded-xl overflow-hidden p-4">
+                    <div className="flex items-center justify-between border-b border-zinc-900 pb-1 mb-2">
+                      <span className="text-[10px] text-zinc-500 uppercase tracking-widest">Simulator Console Output</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>
+                    </div>
+                    <div className="flex-1 overflow-y-auto font-mono text-xs text-zinc-400 space-y-1 pr-2">
+                      {attackSteps.length === 0 ? (
+                        <div className="text-zinc-600 italic">Chọn một kịch bản tấn công giả lập từ danh sách bên trái để kiểm thử.</div>
+                      ) : (
+                        attackSteps.map((step, idx) => (
+                          <div key={idx} className="flex items-start space-x-1">
+                            <span className="text-red-500 font-bold">&gt;</span>
+                            <span className={
+                              step.includes("SUCCESS") || step.includes("ĐÁNH CHẶN THÀNH CÔNG")
+                                ? "text-emerald-400 font-bold"
+                                : step.includes("ATTACK") || step.includes("Tấn công")
+                                ? "text-yellow-500 font-semibold"
+                                : step.includes("FAILED") || step.includes("ERROR")
+                                ? "text-red-400 font-bold bg-red-950/30 px-1 rounded border border-red-800/10"
+                                : "text-zinc-300"
+                            }>
+                              {step}
+                            </span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
                 </div>
               </div>
             )}
