@@ -3,11 +3,13 @@ import { Pool } from "pg";
 import crypto from "crypto";
 
 const pool = new Pool({
-  connectionString: "postgresql://postgres:postgres_secure_password_2026@localhost:5432/fapi_db"
+  connectionString: process.env.DATABASE_URL || "postgresql://postgres:postgres_secure_password_2026@localhost:5432/fapi_db"
 });
 
-const gatewayURL = "http://localhost:8080/api/balance";
-const idpURL = "http://localhost:8081";
+const gatewayURL = process.env.GATEWAY_URL || "http://localhost:8080/api/balance";
+const idpURL = process.env.IDP_URL || "http://localhost:8081";
+const aliceSecret = process.env.ALICE_SECRET || "alice-secure-secret-2026";
+const bobSecret = process.env.BOB_SECRET || "bob-secure-secret-2026";
 
 // Helper function to sign DPoP proof
 function generateDPoPProof(privateKey: crypto.KeyObject, htm: string, htu: string, jti: string, ath?: string) {
@@ -57,7 +59,7 @@ export async function POST(req: Request) {
       logs.push("[INFO] Lấy Access Token hợp lệ từ IdP...");
       
       // Step 1: Get Valid Token
-      const authRes = await fetch(`${idpURL}/authorize?response_type=code&client_id=client-alice&client_secret=alice-secure-secret-2026&code_challenge=XqpGML&code_challenge_method=S256&redirect_uri=http://localhost:8080/callback`, {
+      const authRes = await fetch(`${idpURL}/authorize?response_type=code&client_id=client-alice&client_secret=${aliceSecret}&code_challenge=XqpGML&code_challenge_method=S256&redirect_uri=http://localhost:8080/callback`, {
         headers: { "Accept": "application/json" }
       });
       if (!authRes.ok) {
@@ -128,7 +130,7 @@ export async function POST(req: Request) {
       logs.push("[INFO] Khởi tạo tấn công Vượt ranh giới Tenant (Tenant Escape)...");
       logs.push("[INFO] Lấy Access Token của Bob (Tenant B)...");
       
-      const authRes = await fetch(`${idpURL}/authorize?response_type=code&client_id=client-bob&client_secret=bob-secure-secret-2026&code_challenge=XqpGML&code_challenge_method=S256&redirect_uri=http://localhost:8080/callback`, {
+      const authRes = await fetch(`${idpURL}/authorize?response_type=code&client_id=client-bob&client_secret=${bobSecret}&code_challenge=XqpGML&code_challenge_method=S256&redirect_uri=http://localhost:8080/callback`, {
         headers: { "Accept": "application/json" }
       });
       const authData = await authRes.json();

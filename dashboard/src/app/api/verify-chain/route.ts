@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { Pool } from "pg";
 
 const pool = new Pool({
-  connectionString: "postgresql://postgres:postgres_secure_password_2026@localhost:5432/fapi_db"
+  connectionString: process.env.DATABASE_URL || "postgresql://postgres:postgres_secure_password_2026@localhost:5432/fapi_db"
 });
 
 export async function GET() {
