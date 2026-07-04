@@ -26,9 +26,9 @@ type JWK struct {
 
 // DPoPClaims đại diện cho các claim đặc thù của DPoP Proof theo RFC 9449
 type DPoPClaims struct {
-	HTTPMethod string `json:"htm"`
-	HTTPURI    string `json:"htu"`
-	Nonce      string `json:"nonce,omitempty"`
+	HTTPMethod      string `json:"htm"`
+	HTTPURI         string `json:"htu"`
+	Nonce           string `json:"nonce,omitempty"`
 	AccessTokenHash string `json:"ath,omitempty"`
 	jwt.RegisteredClaims
 }
@@ -43,12 +43,12 @@ func ComputeThumbprint(jwk JWK) (string, error) {
 		"x":   jwk.X,
 		"y":   jwk.Y,
 	}
-	
+
 	data, err := json.Marshal(canonicalMap)
 	if err != nil {
 		return "", err
 	}
-	
+
 	hash := sha256.Sum256(data)
 	return base64.RawURLEncoding.EncodeToString(hash[:]), nil
 }
@@ -159,4 +159,3 @@ func VerifyDPoPProof(proofJWT, expectedMethod, expectedURI, accessToken string) 
 
 	return jkt, claims.ID, nil
 }
-

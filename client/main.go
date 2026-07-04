@@ -113,7 +113,7 @@ func getDPoPBoundToken(idpBaseURL, clientID, clientSecret string, dpopKey *ecdsa
 	// B. Bước 1: Authorization Request (lấy authorization code)
 	// Sử dụng Accept: application/json để nhận thẳng code dạng JSON (headless CLI)
 	authURL := fmt.Sprintf("%s/authorize?response_type=code&client_id=%s&client_secret=%s&code_challenge=%s&code_challenge_method=S256&redirect_uri=http://localhost:8080/callback", idpBaseURL, clientID, clientSecret, challenge)
-	
+
 	req, _ := http.NewRequest("GET", authURL, nil)
 	req.Header.Set("Accept", "application/json")
 
@@ -138,7 +138,7 @@ func getDPoPBoundToken(idpBaseURL, clientID, clientSecret string, dpopKey *ecdsa
 
 	// C. Bước 2: Token Exchange Request (Đổi code lấy DPoP-bound Token)
 	tokenURL := fmt.Sprintf("%s/token", idpBaseURL)
-	
+
 	// Sinh DPoP Proof cho endpoint /token
 	dpopProof, err := clientCrypto.GenerateDPoPProof(dpopKey, "POST", tokenURL, "")
 	if err != nil {

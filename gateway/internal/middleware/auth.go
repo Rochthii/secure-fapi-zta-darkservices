@@ -19,10 +19,10 @@ type AuthMiddleware struct {
 }
 
 type TokenClaims struct {
-	Sub      string   `json:"sub"`
-	TenantID string   `json:"tenant_id"`
-	Role     string   `json:"role"`
-	Scope    string   `json:"scope"`
+	Sub      string `json:"sub"`
+	TenantID string `json:"tenant_id"`
+	Role     string `json:"role"`
+	Scope    string `json:"scope"`
 }
 
 func NewAuthMiddleware(jwksURL string, enforceZiti bool) *AuthMiddleware {
@@ -237,4 +237,3 @@ func (m *AuthMiddleware) EnforcePolicy(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
-

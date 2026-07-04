@@ -54,7 +54,7 @@ func CalculateJWKThumbprint(pubKey *ecdsa.PublicKey) (string, error) {
 // GenerateDPoPProof creates and signs a DPoP Proof JWT
 func GenerateDPoPProof(key *ecdsa.PrivateKey, method, uri, accessToken string) (string, error) {
 	now := time.Now()
-	
+
 	// Create JWT ID (jti)
 	jtiBytes := make([]byte, 16)
 	if _, err := rand.Read(jtiBytes); err != nil {

@@ -42,7 +42,7 @@ func AuthorizeHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid_request: code_challenge is required", http.StatusBadRequest)
 		return
 	}
-	
+
 	// FAPI 2.0 bắt buộc sử dụng phương thức S256 (SHA-256) để mã hóa verifier
 	if codeChallengeMethod != "S256" {
 		http.Error(w, "invalid_request: code_challenge_method must be 'S256'", http.StatusBadRequest)

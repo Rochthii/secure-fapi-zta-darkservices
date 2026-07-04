@@ -19,7 +19,7 @@ func GetZitiIdentity(conn net.Conn) string {
 
 	// Use reflection to check if the connection has a SourceIdentifier method
 	val := reflect.ValueOf(conn)
-	
+
 	// If it is a pointer, get the underlying value
 	if val.Kind() == reflect.Ptr {
 		val = val.Elem()

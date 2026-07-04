@@ -27,7 +27,7 @@ func JWKSHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	pubKey := config.AppConfig.PublicKey
-	
+
 	// Trích xuất tọa độ X, Y của khóa Elliptic Curve P-256
 	xBytes := pubKey.X.Bytes()
 	yBytes := pubKey.Y.Bytes()

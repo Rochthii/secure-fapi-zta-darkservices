@@ -43,8 +43,8 @@ func createTestDPoPProof(t *testing.T, priv *ecdsa.PrivateKey, jwk JWK, htm, htu
 		HTTPMethod: htm,
 		HTTPURI:    htu,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ID:        jti,
-			IssuedAt:  jwt.NewNumericDate(iat),
+			ID:       jti,
+			IssuedAt: jwt.NewNumericDate(iat),
 		},
 	}
 

@@ -11,12 +11,12 @@ func VerifyPKCE(codeVerifier, codeChallenge, method string) bool {
 	if method != "S256" {
 		return false
 	}
-	
+
 	// Tính hash SHA-256 của code_verifier
 	hash := sha256.Sum256([]byte(codeVerifier))
-	
+
 	// Mã hóa Base64URL không chứa padding (=)
 	computedChallenge := base64.RawURLEncoding.EncodeToString(hash[:])
-	
+
 	return computedChallenge == codeChallenge
 }

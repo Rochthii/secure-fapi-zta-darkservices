@@ -106,6 +106,43 @@ export default function SOCDashboard() {
   const terminalEndRef = useRef<HTMLDivElement>(null);
   const verifyConsoleRef = useRef<HTMLDivElement>(null);
 
+  // Live Benchmark states
+  const [isBenchmarking, setIsBenchmarking] = useState(false);
+  const [benchmarkResult, setBenchmarkResult] = useState<any>(null);
+  const [benchmarkError, setBenchmarkError] = useState("");
+  const [cooldown, setCooldown] = useState(0);
+
+  const runBenchmark = async () => {
+    if (cooldown > 0 || isBenchmarking) return;
+    setIsBenchmarking(true);
+    setBenchmarkError("");
+    setBenchmarkResult(null);
+
+    try {
+      const res = await fetch("/api/benchmark", { method: "POST" });
+      if (!res.ok) {
+        throw new Error(`Benchmark failed: Status ${res.status}`);
+      }
+      const json = await res.json();
+      if (json.status === "success" && json.data) {
+        setBenchmarkResult(json.data);
+        setCooldown(30);
+      } else {
+        throw new Error(json.message || "Benchmark failed");
+      }
+    } catch (e: any) {
+      setBenchmarkError(e.message || "Error running benchmark");
+    } finally {
+      setIsBenchmarking(false);
+    }
+  };
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
+
   // Initialize and mount
   useEffect(() => {
     setIsMounted(true);
@@ -445,7 +482,8 @@ export default function SOCDashboard() {
               <nav className="space-y-0.5 px-3">
                 {[
                   { id: "gateway_status", label: "DPoP & mTLS Matrix", icon: Lock },
-                  { id: "crypto", label: "Cryptography Radar", icon: Cpu }
+                  { id: "crypto", label: "Cryptography Radar", icon: Cpu },
+                  { id: "performance", label: "Performance & Benchmark", icon: Activity }
                 ].map(item => (
                   <button
                     key={item.id}
@@ -691,6 +729,139 @@ export default function SOCDashboard() {
                         </div>
                       ))
                     )}
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* TAB: PERFORMANCE */}
+            {activeTab === "performance" && (
+              <div className="flex-1 flex flex-col space-y-6 overflow-y-auto pr-2">
+                {/* Latency Breakdown KPI cards */}
+                <div className="grid grid-cols-4 gap-6">
+                  <div className="bg-[#080d16] border border-[#132237] rounded-xl p-4 flex flex-col justify-between">
+                    <span className="text-[10px] text-zinc-500 uppercase tracking-widest">Realtime Throughput</span>
+                    <span className="text-2xl font-bold text-cyan-400 mt-2">
+                      {isOffline ? "0" : throughput} <span className="text-xs text-zinc-500 font-normal">REQS</span>
+                    </span>
+                  </div>
+                  <div className="bg-[#080d16] border border-[#132237] rounded-xl p-4 flex flex-col justify-between">
+                    <span className="text-[10px] text-zinc-500 uppercase tracking-widest">Cryptographic Overhead</span>
+                    <span className="text-2xl font-bold text-yellow-500 mt-2">
+                      {isOffline ? "0.0" : (latencyHistory.length > 0 ? (
+                        ((latencyHistory[latencyHistory.length - 1].dpopVerify + latencyHistory[latencyHistory.length - 1].tokenVerify) / 1000).toFixed(1)
+                      ) : "0.0")} <span className="text-xs text-zinc-500 font-normal">ms</span>
+                    </span>
+                  </div>
+                  <div className="bg-[#080d16] border border-[#132237] rounded-xl p-4 flex flex-col justify-between">
+                    <span className="text-[10px] text-zinc-500 uppercase tracking-widest">Database Latency</span>
+                    <span className="text-2xl font-bold text-emerald-500 mt-2">
+                      {isOffline ? "0.0" : (latencyHistory.length > 0 ? (
+                        ((latencyHistory[latencyHistory.length - 1].rlsContext + latencyHistory[latencyHistory.length - 1].wormExec) / 1000).toFixed(1)
+                      ) : "0.0")} <span className="text-xs text-zinc-500 font-normal">ms</span>
+                    </span>
+                  </div>
+                  <div className="bg-[#080d16] border border-[#132237] rounded-xl p-4 flex flex-col justify-between">
+                    <span className="text-[10px] text-zinc-500 uppercase tracking-widest">API Status SLO</span>
+                    <span className="text-2xl font-bold text-green-400 mt-2">
+                      {isOffline ? "UNKNOWN" : "99.99%"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-6">
+                  {/* Latency History Chart */}
+                  <div className="bg-[#080d16] border border-[#132237] rounded-xl p-6 col-span-2 flex flex-col h-[320px]">
+                    <h3 className="text-xs font-bold text-cyan-400 uppercase tracking-wider mb-4">
+                      Realtime Cryptographic & DB Latency Stack (µs)
+                    </h3>
+                    <div className="flex-1 w-full text-xs">
+                      {latencyHistory.length === 0 ? (
+                        <div className="h-full flex items-center justify-center text-zinc-500 italic">
+                          Awaiting gateway activity metrics stream...
+                        </div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={latencyHistory} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <XAxis dataKey="time" stroke="#4b5563" fontSize={10} />
+                            <YAxis stroke="#4b5563" fontSize={10} label={{ value: 'µs', angle: -90, position: 'insideLeft', fill: '#4b5563' }} />
+                            <Tooltip 
+                              contentStyle={{ backgroundColor: '#070b12', borderColor: '#132237', color: '#f3f4f6', fontFamily: 'monospace', fontSize: 11 }}
+                            />
+                            <Legend wrapperStyle={{ fontSize: 10, paddingTop: 10 }} />
+                            <Area type="monotone" dataKey="dpopVerify" stackId="1" stroke="#eab308" fill="#eab308" fillOpacity={0.15} name="DPoP Verify" />
+                            <Area type="monotone" dataKey="tokenVerify" stackId="1" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.15} name="Token JWKS" />
+                            <Area type="monotone" dataKey="rlsContext" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.15} name="Postgres RLS" />
+                            <Area type="monotone" dataKey="wormExec" stackId="1" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.15} name="WORM Hash/Write" />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Live Benchmark Panel */}
+                  <div className="bg-[#080d16] border border-[#132237] rounded-xl p-6 flex flex-col justify-between">
+                    <div>
+                      <h3 className="text-xs font-bold text-cyan-400 uppercase tracking-wider mb-2">
+                        Live Load Benchmark Console
+                      </h3>
+                      <p className="text-[10px] text-zinc-500 mb-4 leading-relaxed">
+                        Trigger a safe cryptographic stress test of 50 concurrent transactions through FAPI 2.0 & DPoP Gateway logic to measure throughput capacity.
+                      </p>
+
+                      {benchmarkResult && (
+                        <div className="space-y-2 text-xs bg-zinc-950 p-3 rounded border border-zinc-900 font-mono">
+                          <div className="flex justify-between">
+                            <span className="text-zinc-500">Throughput:</span>
+                            <span className="text-yellow-400 font-bold">{benchmarkResult.rps} RPS</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-zinc-500">Avg Latency:</span>
+                            <span className="text-cyan-400 font-bold">{benchmarkResult.avgLatencyMs} ms</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-zinc-500">P95 Latency:</span>
+                            <span className="text-purple-400 font-bold">{benchmarkResult.p95LatencyMs} ms</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-zinc-500">Success Rate:</span>
+                            <span className="text-emerald-400 font-bold">{benchmarkResult.successRate}%</span>
+                          </div>
+                          <div className="text-[9px] text-zinc-600 border-t border-zinc-900 pt-2 flex justify-between">
+                            <span>Requests: {benchmarkResult.successRequests}/{benchmarkResult.totalRequests}</span>
+                            <span>Time: {benchmarkResult.durationMs}ms</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {benchmarkError && (
+                        <div className="text-xs text-red-400 bg-red-950/40 p-3 rounded border border-red-900/30">
+                          Error: {benchmarkError}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-4">
+                      <button
+                        onClick={runBenchmark}
+                        disabled={isBenchmarking || cooldown > 0 || isOffline}
+                        className={`w-full py-2.5 rounded-lg font-bold text-xs tracking-wider border transition-all cursor-pointer ${
+                          isOffline
+                            ? "bg-zinc-950 border-zinc-900 text-zinc-600 cursor-not-allowed"
+                            : isBenchmarking
+                            ? "bg-cyan-950/20 border-cyan-500/30 text-cyan-400 animate-pulse"
+                            : cooldown > 0
+                            ? "bg-zinc-950 border-zinc-900 text-zinc-500 cursor-not-allowed"
+                            : "bg-cyan-500/10 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20 active:scale-[0.98]"
+                        }`}
+                      >
+                        {isBenchmarking
+                          ? "RUNNING BENCHMARK..."
+                          : cooldown > 0
+                          ? `COOLDOWN (${cooldown}s)`
+                          : "START LIVE BENCHMARK"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

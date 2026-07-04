@@ -14,6 +14,25 @@ Tài liệu này ghi nhận toàn bộ lịch sử thay đổi, nâng cấp và 
 
 
 
+## [Nâng Cấp Kiểm Thử Bảo Mật Thực Nghiệm & Tích Hợp UI Giám Sát Hiệu Năng] — 2026-07-04
+
+### Added
+- **API Benchmark Backend (`/api/benchmark`)**:
+  - Triển khai endpoint `/api/benchmark` bằng module `crypto` Node.js để tự động ký DPoP Proof bằng ES256 (ECDSA P-256) không phụ thuộc thư viện ngoài.
+  - Tích hợp cơ chế tự động làm mới token (auto-renewal) khi nhận mã lỗi 401/403 từ Gateway.
+- **Tab Giao diện Performance & Benchmark**:
+  - Tích hợp tab giám sát hiệu năng trực quan vào Cyber SOC Dashboard.
+  - Vẽ biểu đồ diện tích xếp chồng (Recharts Area Chart) thể hiện realtime thời gian xử lý của các lớp trong Gateway: *DPoP Verify, Token JWKS, Postgres RLS, WORM Hash/Write*.
+  - Tích hợp nút bấm Live Benchmark Test Console hỗ trợ kích hoạt stress test 50 giao dịch song song và hiển thị báo cáo hiệu năng thời gian thực (RPS, Latency Min/Max/Avg, P95, Success Rate).
+
+### Changed
+- **Chuẩn hóa Phân tích Cấu hình (Environment Parsing)**:
+  - Nâng cấp [gateway/main.go](file:///e:/Projects/Project_TN/secure-fapi-zta-darkservices/gateway/main.go) với cơ chế `strings.TrimSpace` cho các biến môi trường cấu hình Ziti/Enforcement để loại bỏ hoàn toàn các ký tự trống do trailing spaces trong CMD scripts.
+
+### Fixed
+- **Bảo mật và Độ chính xác kiểm thử**:
+  - Khắc phục lỗi loop 404 redirect khi authorize bằng cách chỉ định đúng header `Accept: application/json` trong request gửi tới IdP.
+
 ---
 
 ## [Hoàn thành Phase 8 - Zero Trust Control Plane Dashboard] — 2026-07-03

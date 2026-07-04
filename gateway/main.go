@@ -9,8 +9,8 @@ import (
 	"os"
 	"strings"
 
-	"gateway/internal/audit"
 	"gateway/internal/api"
+	"gateway/internal/audit"
 	"gateway/internal/middleware"
 	"gateway/internal/policy"
 	"gateway/internal/telemetry"
@@ -52,9 +52,9 @@ func main() {
 		zitiServiceName = "financial-ledger-service"
 	}
 
-	useZitiStr := os.Getenv("USE_ZITI")
+	useZitiStr := strings.TrimSpace(os.Getenv("USE_ZITI"))
 	useZiti := !strings.EqualFold(useZitiStr, "false")
-	enforceZiti := useZiti || strings.EqualFold(os.Getenv("ENFORCE_ZITI"), "true")
+	enforceZiti := useZiti || strings.EqualFold(strings.TrimSpace(os.Getenv("ENFORCE_ZITI")), "true")
 
 	// 2. Khởi tạo Database client và kết nối
 	dbClient, err := audit.NewDBClient(dbURL)

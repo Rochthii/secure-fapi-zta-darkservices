@@ -46,15 +46,15 @@ func (s *RAMStore) GetAndRemoveAuthCode(code string) (string, string, bool) {
 	if !ok {
 		return "", "", false
 	}
-	
+
 	// Xóa ngay lập tức khỏi bộ nhớ
 	s.codes.Delete(code)
-	
+
 	info := val.(AuthCodeInfo)
 	if time.Now().After(info.ExpiresAt) {
 		return "", "", false // Đã hết hạn
 	}
-	
+
 	return info.CodeChallenge, info.ClientID, true
 }
 
@@ -81,7 +81,7 @@ func (s *RAMStore) startCleanupTicker() {
 	ticker := time.NewTicker(1 * time.Minute)
 	for range ticker.C {
 		now := time.Now()
-		
+
 		// 1. Dọn dẹp Auth Codes hết hạn
 		s.codes.Range(func(key, val interface{}) bool {
 			info := val.(AuthCodeInfo)
@@ -90,7 +90,7 @@ func (s *RAMStore) startCleanupTicker() {
 			}
 			return true
 		})
-		
+
 		// 2. Dọn dẹp JTI cache hết hạn
 		s.jtis.Range(func(key, val interface{}) bool {
 			expireTime := val.(time.Time)

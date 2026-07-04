@@ -25,9 +25,9 @@ import (
 
 // --- CONFIGURATION ---
 const (
-	IdpURL       = "http://localhost:8081"
-	GatewayURL   = "http://localhost:8080"
-	DbSuperuser  = "postgres://postgres:postgres_secure_password_2026@localhost:5432/fapi_db?sslmode=disable"
+	IdpURL      = "http://localhost:8081"
+	GatewayURL  = "http://localhost:8080"
+	DbSuperuser = "postgres://postgres:postgres_secure_password_2026@localhost:5432/fapi_db?sslmode=disable"
 )
 
 // --- CRYPTO HELPERS (Self-contained) ---
@@ -313,7 +313,7 @@ func Test4_ZitiFailClosed(t *testing.T) {
 	cmd := exec.Command("../gateway/gateway.exe")
 	cmd.Dir = "../gateway"
 	cmd.Env = append(os.Environ(), "USE_ZITI=false", "ENFORCE_ZITI=true", "PORT=8083")
-	
+
 	err := cmd.Start()
 	if err != nil {
 		t.Fatalf("Failed to start test gateway: %v", err)
