@@ -1,30 +1,31 @@
 ---
-description: Quy trình onboard một ngôi chùa (tenant) mới vào hệ thống
+description: Quy trình onboard một đơn vị thành viên (tenant) mới vào hệ thống
 ---
 
-Dùng workflow này khi cần thêm một chùa mới vào hệ thống multi-tenant.
+Dùng workflow này khi cần thêm một tổ chức/đơn vị thành viên (tenant) mới vào hệ thống multi-tenant FAPI-ZTA.
 
-1. **THU THẬP THÔNG TIN**: Yêu cầu tôi cung cấp:
-   - Tên chùa (tiếng Việt, tiếng Khmer, tiếng Anh)
-   - Domain (ví dụ: `chua-abc.com`)
-   - Địa chỉ, số điện thoại, email liên hệ
-   - Theme màu (xem `lib/themes-config.ts` để chọn)
-   - Logo URL (nếu có)
+1. **THU THẬP THÔNG TIN**: Yêu cầu cung cấp:
+   - Tên tổ chức/đơn vị thành viên (tiếng Việt, tiếng Anh)
+   - Tên viết tắt định danh (ví dụ: `tenant-abc`)
+   - Domain kết nối mạng ảo (ví dụ: `tenant-abc.api`)
+   - Địa chỉ liên hệ, email, số điện thoại người đại diện
 
-2. **TẠO TENANT**: Chèn record mới vào table `tenants` trong Supabase với:
-   - `id` mới (UUID)
-   - `domain`
-   - `name`, `name_km`, `name_en`
-   - `theme_id` tương ứng
+2. **CẤU HÌNH DATABASE**:
+   - Chèn bản ghi mới vào bảng `tenants` trong PostgreSQL:
+     - `id`: Sinh mã UUID mới
+     - `name`: Tên đơn vị
+     - `slug`: Tên viết tắt định danh
+   - Tạo tài khoản người dùng/nhân viên ban đầu cho tenant đó trong bảng liên quan.
 
-3. **TẠO SETTINGS**: Chèn dữ liệu mặc định vào `site_settings` cho tenant mới:
-   - address, contact_phone, contact_email
-   - logo_url, favicon_url
-   - opening_hours, facebook_url
+3. **CẤU HÌNH PHÂN QUYỀN MẠNG ẢO (OPENZITI)**:
+   - Tạo danh tính mạng ảo (Ziti Identity) mới cho thiết bị của tenant:
+     `ziti edge create identity device <tenant-slug>-client`
+   - Ghi danh (enroll) danh tính để sinh tệp `.json` kết nối.
+   - Gán chính sách truy cập (Dial Policy) cho danh tính mới kết nối tới dịch vụ `financial-ledger-service`.
 
-4. **KIỂM TRA**: Xác nhận:
-   - Middleware routing hoạt động đúng với domain mới
-   - Theme được áp dụng đúng
-   - Trang chủ và trang liên hệ hiển thị đúng thông tin
+4. **KIỂM TRA XÁC MINH**:
+   - Chạy lệnh test gọi API balance với tenant context mới để kiểm tra:
+     - Cơ chế RLS cô lập dữ liệu hoạt động chính xác (không thấy chéo dữ liệu của tenant khác).
+     - Token DPoP được cấp phát và verify thành công từ IdP.
 
-5. **BÁO CÁO**: Tổng hợp thông tin tenant vừa tạo và các bước tiếp theo (upload logo, nhập tin tức...).
+5. **BÁO CÁO**: Tổng hợp thông tin credentials mạng ảo và token config vừa tạo bàn giao cho tenant mới.
