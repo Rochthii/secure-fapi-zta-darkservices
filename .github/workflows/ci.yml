@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  # ── Job 1: Build tất cả các module Go ──────────────────────────────────
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module: [gateway, idp, client]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ matrix.module }}/go.mod
+          cache-dependency-path: ${{ matrix.module }}/go.sum
+
+      - name: Build ${{ matrix.module }}
+        working-directory: ${{ matrix.module }}
+        run: go build ./...
+
+  # ── Job 2: Vet + Format check ──────────────────────────────────────────
+  vet:
+    name: Vet & Format
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module: [gateway, idp, client]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ matrix.module }}/go.mod
+          cache-dependency-path: ${{ matrix.module }}/go.sum
+
+      - name: go vet ${{ matrix.module }}
+        working-directory: ${{ matrix.module }}
+        run: go vet ./...
+
+      - name: gofmt check ${{ matrix.module }}
+        working-directory: ${{ matrix.module }}
+        run: |
+          GOFMT_OUTPUT=$(gofmt -l .)
+          if [ -n "$GOFMT_OUTPUT" ]; then
+            echo "The following files are not gofmt-compliant:"
+            echo "$GOFMT_OUTPUT"
+            exit 1
+          fi
+
+  # ── Job 3: Unit tests (không cần infrastructure) ───────────────────────
+  unit-test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: gateway/go.mod
+          cache-dependency-path: gateway/go.sum
+
+      - name: Run gateway middleware unit tests
+        working-directory: gateway
+        run: go test -v -race ./internal/...
+        # Lưu ý: tests/security_test.go và tests/performance_test.go
+        # là integration tests (cần IdP + Gateway + Postgres đang chạy).
+        # Chạy local bằng: go test -tags=integration ./tests/...
