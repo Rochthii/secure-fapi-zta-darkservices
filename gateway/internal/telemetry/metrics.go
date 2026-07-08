@@ -14,6 +14,7 @@ type MetricsStore struct {
 	dpopVerifyUs  int64
 	tokenVerifyUs int64
 	zitiVerifyUs  int64
+	pdpVerifyUs   int64 // Latency gọi gRPC PDP.CheckAccess
 
 	dbRlsContextUs int64
 	dbWormExecUs   int64
@@ -48,6 +49,13 @@ func RecordDbLatency(rls, worm int64) {
 	globalStore.dbWormExecUs = worm
 }
 
+// RecordPDPOverhead ghi nhận độ trễ của gọi gRPC PDP.CheckAccess tính bằng microseconds.
+func RecordPDPOverhead(pdp int64) {
+	globalStore.mu.Lock()
+	defer globalStore.mu.Unlock()
+	globalStore.pdpVerifyUs = pdp
+}
+
 // ServeMetrics formats and writes the metrics in Prometheus text exposition format
 func ServeMetrics(w http.ResponseWriter, r *http.Request) {
 	globalStore.mu.RLock()
@@ -79,6 +87,7 @@ func ServeMetrics(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "gateway_security_overhead_microseconds{stage=\"dpop\"} %d\n", globalStore.dpopVerifyUs)
 	fmt.Fprintf(w, "gateway_security_overhead_microseconds{stage=\"token\"} %d\n", globalStore.tokenVerifyUs)
 	fmt.Fprintf(w, "gateway_security_overhead_microseconds{stage=\"ziti\"} %d\n", globalStore.zitiVerifyUs)
+	fmt.Fprintf(w, "gateway_security_overhead_microseconds{stage=\"pdp_grpc\"} %d\n", globalStore.pdpVerifyUs)
 	fmt.Fprintln(w)
 
 	// 3. Output DB Latencies
