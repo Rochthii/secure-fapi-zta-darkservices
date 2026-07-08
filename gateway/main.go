@@ -12,7 +12,7 @@ import (
 	"gateway/internal/api"
 	"gateway/internal/audit"
 	"gateway/internal/middleware"
-	"gateway/internal/policy"
+	"gateway/internal/pdpclient"
 	"gateway/internal/telemetry"
 	"gateway/internal/ziti"
 )
@@ -26,9 +26,43 @@ func main() {
 
 	log.Println("Starting Secure FAPI-ZTA Dark API Gateway...")
 
-	// Khởi tạo Policy Engine (PDP)
-	if err := policy.LoadPolicies(); err != nil {
-		log.Fatalf("POLICY ERROR: Failed to load policies: %v", err)
+	pdpAddr := os.Getenv("PDP_ADDR")
+	if pdpAddr == "" {
+		pdpAddr = "localhost:50051"
+	}
+
+	pdpUseZiti := strings.EqualFold(strings.TrimSpace(os.Getenv("PDP_USE_ZITI")), "true")
+	pdpZitiIdentity := os.Getenv("PDP_ZITI_IDENTITY_PATH")
+	if pdpZitiIdentity == "" {
+		pdpZitiIdentity = os.Getenv("ZITI_IDENTITY_PATH")
+		if pdpZitiIdentity == "" {
+			pdpZitiIdentity = "docker/identities/gateway-dev.json"
+		}
+	}
+	pdpZitiServiceName := os.Getenv("PDP_ZITI_SERVICE_NAME")
+	if pdpZitiServiceName == "" {
+		pdpZitiServiceName = "policy-decision-service"
+	}
+
+	pdpCfg := pdpclient.Config{
+		Addr:             pdpAddr,
+		TLSCertFile:      os.Getenv("PDP_TLS_CERT"),
+		TLSKeyFile:       os.Getenv("PDP_TLS_KEY"),
+		TLSCAFile:        os.Getenv("PDP_TLS_CA"),
+		FailOpen:         strings.EqualFold(strings.TrimSpace(os.Getenv("PDP_FAIL_OPEN")), "true"),
+		UseZiti:          pdpUseZiti,
+		ZitiIdentityFile: pdpZitiIdentity,
+		ZitiServiceName:  pdpZitiServiceName,
+	}
+	pdpClient, err := pdpclient.New(pdpCfg)
+	if err != nil {
+		log.Fatalf("PDP ERROR: Failed to connect to Policy Decision Point at %s: %v", pdpAddr, err)
+	}
+	defer pdpClient.Close()
+	if pdpUseZiti {
+		log.Printf("Connected to Policy Decision Point (PDP) via OpenZiti Dark Service: %s", pdpZitiServiceName)
+	} else {
+		log.Printf("Connected to Policy Decision Point (PDP) via standard network: %s", pdpAddr)
 	}
 
 	// 1. Tải cấu hình từ biến môi trường
@@ -68,8 +102,8 @@ func main() {
 	defer dbClient.Close()
 	log.Println("Connected to PostgreSQL database successfully.")
 
-	// 3. Khởi tạo Auth Middleware & API Handlers
-	authMiddleware := middleware.NewAuthMiddleware(jwksURL, enforceZiti)
+	// 3. Khởi tạo Auth Middleware với gRPC PDP Client
+	authMiddleware := middleware.NewAuthMiddleware(jwksURL, enforceZiti, pdpClient)
 	handlers := api.NewAPIHandlers(dbClient)
 
 	// 4. Định nghĩa Router và Middleware Chain
