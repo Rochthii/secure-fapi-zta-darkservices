@@ -1,35 +1,14 @@
----
-description: Cập nhật và đồng bộ tài liệu kỹ thuật sau khi có thay đổi lớn
----
+# Documentation & Sync Workflow
 
-Dùng workflow này sau khi hoàn thành một tính năng lớn hoặc thay đổi kiến trúc.
+Run this workflow whenever a major architectural change or feature is completed.
 
-1. **XÁC ĐỊNH PHẠM VI**: Liệt kê những gì đã thay đổi kể từ lần cập nhật tài liệu cuối.
-
-2. **CẬP NHẬT DOCS THEO LOẠI**:
-
-   **Thay đổi kiến trúc / routing:**
-   → Cập nhật `docs/ARCHITECTURE.md`
-
-   **Thay đổi database / migration:**
-   → Cập nhật `docs/07_DATABASE_MIGRATIONS_RLS.md`
-
-   **Tính năng admin mới:**
-   → Cập nhật `docs/05_ADMIN_FEATURES.md`
-
-   **API / Server Actions mới:**
-   → Tạo hoặc cập nhật docs tương ứng trong `docs/`
-
-3. **CẬP NHẬT LỘ TRÌNH (ROADMAP & TIMELINE)**:
-   → Cập nhật tiến độ các task trong `docs/13_IMPLEMENTATION_ROADMAP.md` và `docs/16_FINAL_MASTER_PLAN.md` sang trạng thái `Hoàn thành` (`[x]`).
-
-4. **KIỂM TRA CONSISTENCY**: Đảm bảo không có tài liệu nào mô tả tính năng đã bị xoá hoặc thay đổi mà chưa được update.
-
-5. **CHANGELOG**: Thêm entry mới vào `CHANGELOG.md` (nếu có) theo format:
-   ```
-   ## [Ngày] - Tên thay đổi
-   ### Added / Changed / Fixed / Removed
-   - Mô tả ngắn gọn
-   ```
-
-6. **COMMIT DOCS**: Commit riêng cho docs với message `docs: ...`
+1. **Identify Scope**: List all files, database tables, RLS policies, or APIs changed.
+2. **Update Type-Specific Docs**:
+   - *Architecture/Routing*: Update `docs/ARCHITECTURE.md` or relative design docs.
+   - *Database Schema/Migration/RLS*: Update RLS docs or schemas.
+   - *Standalone PDP Integration*: Update `README.md` and benchmark files.
+3. **Roadmap & Master Plan Sync**:
+   - Check off completed items (`[x]`) in `docs/13_IMPLEMENTATION_ROADMAP.md` and `docs/16_FINAL_MASTER_PLAN.md`.
+4. **Consistency check**: Ensure obsolete configurations/features are deleted from docs.
+5. **Changelog Entry**: Add new entries to `CHANGELOG.md` under `## [YYYY-MM-DD] - Feature Title`.
+6. **Commit Docs**: Commit documentation changes separately with prefix `docs: ...`.
