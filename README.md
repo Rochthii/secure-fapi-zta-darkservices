@@ -237,34 +237,34 @@ A standalone security operations center UI built with Glassmorphism design, conn
 **Screenshots:**
 
 * **Overview Dashboard:**
-  ![Overview Dashboard](image-4.png)
+  ![Overview Dashboard](docs/diagrams/screenshots/image-4.png)
 
 * **Users & Sessions:**
-  ![Users and Sessions](image-5.png)
+  ![Users and Sessions](docs/diagrams/screenshots/image-5.png)
 
 * **OAuth Clients:**
-  ![OAuth Clients](image-6.png)
+  ![OAuth Clients](docs/diagrams/screenshots/image-6.png)
 
 * **OpenZiti Topology Fabric Map:**
-  ![Topology Fabric Map](image-7.png)
+  ![Topology Fabric Map](docs/diagrams/screenshots/image-7.png)
 
 * **Stealth Service Policies:**
-  ![Stealth Service Policies](image-8.png)
+  ![Stealth Service Policies](docs/diagrams/screenshots/image-8.png)
 
 * **Node Details Panel:**
-  ![Node Details Panel](image-9.png)
+  ![Node Details Panel](docs/diagrams/screenshots/image-9.png)
 
 * **DPoP & mTLS Credentials Matrix:**
-  ![DPoP & mTLS Matrix](image-10.png)
+  ![DPoP & mTLS Matrix](docs/diagrams/screenshots/image-10.png)
 
 * **Cryptography Latency Radar:**
-  ![Cryptography Radar](image-11.png)
+  ![Cryptography Radar](docs/diagrams/screenshots/image-11.png)
 
 * **WORM Chain Explorer:**
-  ![WORM Chain Explorer](image-12.png)
+  ![WORM Chain Explorer](docs/diagrams/screenshots/image-12.png)
 
 * **Performance & Live Benchmark:**
-  ![Performance & Benchmark](image-13.png)
+  ![Performance & Benchmark](docs/diagrams/screenshots/image-13.png)
 
 **How to run:**
 ```bash

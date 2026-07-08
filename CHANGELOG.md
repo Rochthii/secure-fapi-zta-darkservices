@@ -2,16 +2,16 @@
 
 Tài liệu này ghi nhận toàn bộ lịch sử thay đổi, nâng cấp và tiến trình triển khai của dự án **Secure FAPI-ZTA Dark Services Gateway**.
 
-![alt text](image-4.png)
-![alt text](image-5.png)
-![alt text](image-6.png)
-![alt text](image-7.png)
-![alt text](image-8.png)
-![alt text](image-9.png)
-![alt text](image-10.png)
-![alt text](image-11.png)
-![alt text](image-12.png)
-![alt text](image-13.png)
+![alt text](docs/diagrams/screenshots/image-4.png)
+![alt text](docs/diagrams/screenshots/image-5.png)
+![alt text](docs/diagrams/screenshots/image-6.png)
+![alt text](docs/diagrams/screenshots/image-7.png)
+![alt text](docs/diagrams/screenshots/image-8.png)
+![alt text](docs/diagrams/screenshots/image-9.png)
+![alt text](docs/diagrams/screenshots/image-10.png)
+![alt text](docs/diagrams/screenshots/image-11.png)
+![alt text](docs/diagrams/screenshots/image-12.png)
+![alt text](docs/diagrams/screenshots/image-13.png)
 
 
 ## [Tích Hợp Quyết Định Phân Quyền Động Qua Mạng Tàng Hình OpenZiti (Phase 1 & 2)] — 2026-07-08
@@ -92,10 +92,10 @@ Tài liệu này ghi nhận toàn bộ lịch sử thay đổi, nâng cấp và 
 
 ---
 
-![alt text](image.png)
-![alt text](image-1.png)
-![alt text](image-2.png)
-![alt text](image-3.png)
+![alt text](docs/diagrams/screenshots/image.png)
+![alt text](docs/diagrams/screenshots/image-1.png)
+![alt text](docs/diagrams/screenshots/image-2.png)
+![alt text](docs/diagrams/screenshots/image-3.png)
 ## [Hoàn thành Phase 6 & 7] — 2026-07-03
 
 ### Added
