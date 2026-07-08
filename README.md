@@ -175,10 +175,12 @@ on local debug environment (Windows 11, Intel i7 12th Gen, 16GB RAM, loopback ne
 | Gateway DPoP Signature Verify | ~150–300 µs |
 | Gateway Token JWKS Verify (cached JWK) | < 50 µs |
 | Gateway Ziti Identity Check | ~10–30 µs |
+| Gateway Dynamic PDP Check (gRPC + OpenZiti) | ~38 µs (0.038 ms) |
 | Postgres RLS Context SET (`set_config`) | ~200–500 µs |
 | Postgres WORM Hash-chain Trigger (SHA-256) | ~100–300 µs |
-| **Total Server Processing Time** | **~700 µs – 1.5 ms** |
+| **Total Server Processing Time** | **~750 µs – 1.6 ms** |
 | Client Round-Trip (loopback) | ~2–5 ms |
+
 
 > To reproduce: `go test -tags=integration -v -run TestLatencyBreakdown ./tests/...` (full stack must be running).
 

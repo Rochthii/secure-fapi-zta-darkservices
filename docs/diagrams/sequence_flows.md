@@ -61,6 +61,7 @@ sequenceDiagram
     participant Client as Client Device
     participant Ziti as OpenZiti Router
     participant Gateway as API Gateway (Dark Service)
+    participant PDP as Policy Engine (PDP)
     participant DB as PostgreSQL
 
     Note over Client, Ziti: Lớp 1: Thiết lập mạng ẩn (Zero Trust Network)
@@ -82,7 +83,11 @@ sequenceDiagram
     Gateway->>Gateway: Binding check: So sánh cnf.jkt trong token == thumbprint public key của proof
     Gateway->>Gateway: Proof matching: So sánh ath trong proof == hash của access token gửi lên
     Gateway->>Gateway: Replay check: Kiểm tra jti của proof có bị trùng?
-    Gateway->>Gateway: Policy check: Phân quyền vai trò người dùng (RBAC)
+    
+    Note over Gateway, PDP: Gọi PDP qua Ziti Overlay (gRPC JSON Codec)
+    Gateway->>PDP: CheckAccess(tenant_id, subject, action, resource, context)
+    PDP->>PDP: Tra cứu Trie O(log N) + Đánh giá AST các thuộc tính ABAC
+    PDP-->>Gateway: Trả về ALLOW / DENY (avg 0.038ms)
 
     Note over Gateway, DB: Lớp 4: Truy cập cơ sở dữ liệu & WORM Audit
     Gateway->>DB: Thiết lập kết nối bằng role app_user (Non-superuser)
@@ -96,6 +101,7 @@ sequenceDiagram
     
     DB-->>Gateway: Trả về kết quả giao dịch
     Gateway-->>Client: Trả về 200 OK + Giao dịch thành công
+
 ```
 
 ---
