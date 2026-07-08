@@ -173,6 +173,7 @@ Timeline: 2026 - 2029 (Aligned with Academic & Research Schedule)
 | T7.3 | Develop latency-breakdown instrumentation for Gateway middleware **(COMPLETE)** | MEDIUM | T4.2 |
 | T7.4 | Execute stress-testing benchmarks under load (k6/wrk) **(COMPLETE)** | HIGH | T7.3 |
 | T7.5 | Draft the "Performance & Formal Methods Analysis" Thesis Chapter | MEDIUM | T7.2, T7.4 |
+| T7.6 | Integrate standalone gRPC PDP over OpenZiti overlay (Phase 1 & 2) **(COMPLETE)** | HIGH | T7.4 |
 
 ---
 

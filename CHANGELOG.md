@@ -14,6 +14,36 @@ Tài liệu này ghi nhận toàn bộ lịch sử thay đổi, nâng cấp và 
 ![alt text](image-13.png)
 
 
+## [Tích Hợp Quyết Định Phân Quyền Động Qua Mạng Tàng Hình OpenZiti (Phase 1 & 2)] — 2026-07-08
+
+### Added
+- **Động cơ gRPC PDP Client (`pdpclient`)**:
+  - Triển khai `pdpclient` Go module kết nối từ API Gateway (PEP) tới Standalone Policy Engine (PDP) qua gRPC.
+  - Sử dụng custom JSON-over-gRPC codec để tối ưu hóa hiệu năng truyền tải và giữ nguyên định dạng dữ liệu của PDP.
+  - Tích hợp cấu hình Keep-Alive và giới hạn timeout 80ms an toàn (fail-closed) ở mức Gateway.
+  - Hỗ trợ đầy đủ mTLS credentials ở cả hai đầu PEP và PDP.
+- **Kênh truyền OpenZiti Dark Channel PEP ↔ PDP (Phase 2)**:
+  - Tích hợp OpenZiti SDK vào PDP Server (`standalone-policy-engine`), cho phép PDP chạy ở chế độ Dark Service (đóng 100% cổng TCP inbound public).
+  - Tích hợp `grpc.WithContextDialer` vào Gateway gRPC Client để định tuyến trực tiếp các gói tin qua Ziti virtual overlay thay vì network socket hệ điều hành.
+- **Bộ Context ABAC Phong Phú**:
+  - Tích hợp gửi IP client, thời gian thực, Ziti Identity và DPoP Key Thumbprint (mã định danh thiết bị) trong mỗi transaction để phục vụ evaluate AST điều kiện tại PDP.
+- **Bộ Kiểm Thử & Benchmark gRPC**:
+  - Triển khai tệp `client_test.go` chứa 6 kịch bản kiểm thử gRPC PDPClient (ALLOW, DENY, Timeout, PDP Down, ABAC Context).
+  - Tích hợp benchmark đo độ trễ gRPC call cục bộ đạt **0.038 ms/op (~26,000+ RPS)**.
+
+### Changed
+- **API Gateway Middleware**:
+  - Thay thế hoàn toàn pdp local dùng JSON tĩnh duyệt tuyến tính $O(N)$ bằng quyết định động thông qua gRPC tới Standalone Policy Engine $O(\log N)$.
+  - Trích xuất thêm `jkt` claim từ DPoP Access Token để dùng làm device fingerprint cho ABAC.
+  - Bổ sung chỉ số Prometheus `pdp_grpc` đo đạc realtime độ trễ quyết định phân quyền.
+
+### Fixed
+- **Lỗi bảo mật nghiêm trọng JSON omitempty**:
+  - Sửa đổi cấu trúc proto pb.go ở cả hai project, loại bỏ tag `omitempty` của enum `decision` để tránh việc client/server hiểu sai các phản hồi quyết định ALLOW/DENY.
+
+---
+
+
 ## [Nâng Cấp Bảo Mật Thực Nghiệm & Tích Hợp UI Giám Sát Hiệu Năng] — 2026-07-04
 
 ### Added

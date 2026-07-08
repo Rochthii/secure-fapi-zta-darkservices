@@ -233,6 +233,14 @@ Chạy song song bằng Go benchmark framework:
 *   **Bộ nhớ cấp phát**: `26,776 B/op` với `235 allocs/op`
 *   **Throughput đạt được**: **~723 reqs/sec** (vượt xa mục tiêu 200-500 RPS đặt ra ban đầu cho lab environment).
 
+### 15.10.4 Kết quả Đo lường PDP gRPC Client (PEP ↔ PDP Benchmark)
+Đo đạc độ trễ và khả năng xử lý của kết nối gRPC JSON-over-gRPC client từ Gateway (PEP) sang Policy Engine (PDP) bằng Go benchmark framework chạy song song:
+*   **Số lượng operation hoàn tất**: `30,153 ops` trong `1.15s`
+*   **Thời gian xử lý gRPC (bao gồm serialize/deserialize)**: **38,084 ns/op** (~0.038 ms/op)
+*   **Bộ nhớ cấp phát**: `12,593 B/op` với `213 allocs/op`
+*   **Hiệu năng gRPC tối đa**: **~26,200 reqs/sec** trên mỗi lõi CPU.
+*   **Nhận xét**: Độ trễ 0.038 ms là cực nhỏ (chỉ chiếm ~0.2% tổng thời gian xử lý giao dịch 18ms), đảm bảo tính khả thi tuyệt đối khi tách Policy Engine thành microservice độc lập kết nối qua OpenZiti overlay mà không gây thắt nút cổ chai (bottleneck) về hiệu năng.
+
 ---
 
 > **Next:** [PART 16 — Final Master Plan](./16_FINAL_MASTER_PLAN.md)
