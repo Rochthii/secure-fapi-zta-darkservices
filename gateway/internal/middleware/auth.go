@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"gateway/internal/auth"
-	"gateway/internal/policy"
+	"gateway/internal/pdpclient"
 	"gateway/internal/telemetry"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -16,6 +16,9 @@ import (
 type AuthMiddleware struct {
 	jwksCache   *auth.JWKSCache
 	enforceZiti bool
+	// pdpClient là gRPC client tới standalone-policy-engine (PDP).
+	// nil chỉ trong test — khi nil EnforcePolicy sẽ fail-closed.
+	pdpClient *pdpclient.PDPClient
 }
 
 type TokenClaims struct {
@@ -23,12 +26,16 @@ type TokenClaims struct {
 	TenantID string `json:"tenant_id"`
 	Role     string `json:"role"`
 	Scope    string `json:"scope"`
+	JKT      string `json:"jkt"` // DPoP Key Thumbprint — device fingerprint cho ABAC
 }
 
-func NewAuthMiddleware(jwksURL string, enforceZiti bool) *AuthMiddleware {
+// NewAuthMiddleware tạo middleware xác thực với gRPC PDP client.
+// pdpClient phải được khởi tạo trước từ gateway/main.go.
+func NewAuthMiddleware(jwksURL string, enforceZiti bool, pdpClient *pdpclient.PDPClient) *AuthMiddleware {
 	return &AuthMiddleware{
 		jwksCache:   auth.NewJWKSCache(jwksURL, 5*time.Minute),
 		enforceZiti: enforceZiti,
+		pdpClient:   pdpClient,
 	}
 }
 
@@ -157,11 +164,19 @@ func (m *AuthMiddleware) SecureAPI(next http.Handler) http.Handler {
 		role, _ := claims["role"].(string)
 		scope, _ := claims["scope"].(string)
 
+		// Trích xuất DPoP JKT (device fingerprint) từ cnf claim để dùng trong ABAC
+		// Phải dùng tên khác jkt — biến jkt đã được khai báo từ auth.VerifyDPoPProof() phía trên
+		var dpopJKT string
+		if cnf, ok := claims["cnf"].(map[string]interface{}); ok {
+			dpopJKT, _ = cnf["jkt"].(string)
+		}
+
 		tClaims := TokenClaims{
 			Sub:      tokenSub,
 			TenantID: tenantID,
 			Role:     role,
 			Scope:    scope,
+			JKT:      dpopJKT,
 		}
 
 		ctx := context.WithValue(r.Context(), ClaimsKey, tClaims)
@@ -203,7 +218,15 @@ func GetClaimsFromContext(ctx context.Context) (TokenClaims, bool) {
 	return claims, ok
 }
 
-// EnforcePolicy acts as the PEP, extracting resource and action and querying the PDP
+// EnforcePolicy là PEP (Policy Enforcement Point) — gọi gRPC PDP để quyết định phân quyền.
+//
+// Luồng xử lý:
+//  1. Trích xuất resource và action từ HTTP request
+//  2. Xây dựng enriched ABAC context (IP, time, DPoP JKT, Ziti identity, scope)
+//  3. Gọi gRPC PDP.CheckAccess() với timeout 80ms
+//  4. Nếu PDP trả DENY → 403 Forbidden
+//  5. Nếu PDP không phản hồi → 503 Service Unavailable (fail-closed)
+//  6. Nếu PDP trả ALLOW → gắn matched_policy_id vào response header và cho phép đi tiếp
 func (m *AuthMiddleware) EnforcePolicy(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		claims, ok := GetClaimsFromContext(r.Context())
@@ -212,26 +235,91 @@ func (m *AuthMiddleware) EnforcePolicy(next http.Handler) http.Handler {
 			return
 		}
 
-		// Map path to resource
-		resource := "unknown"
-		if strings.HasPrefix(r.URL.Path, "/api/balance") {
-			resource = "balance"
-		} else if strings.HasPrefix(r.URL.Path, "/api/transfer") {
-			resource = "transfer"
-		} else if strings.HasPrefix(r.URL.Path, "/api/audit-logs") {
-			resource = "audit-logs"
+		// Kiểm tra pdpClient — fail-closed nếu chưa được khởi tạo
+		if m.pdpClient == nil {
+			http.Error(w, "forbidden: policy enforcement point not initialized", http.StatusServiceUnavailable)
+			return
 		}
 
-		// Map HTTP method to Action
+		// 1. Map URL path → resource name
+		resource := "unknown"
+		switch {
+		case strings.HasPrefix(r.URL.Path, "/api/balance"):
+			resource = "resource:balance"
+		case strings.HasPrefix(r.URL.Path, "/api/transfer"):
+			resource = "resource:transfer"
+		case strings.HasPrefix(r.URL.Path, "/api/audit-logs"):
+			resource = "resource:audit-logs"
+		}
+
+		// 2. Map HTTP method → action
 		action := "READ"
-		if r.Method == "POST" || r.Method == "PUT" || r.Method == "DELETE" {
+		if r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodDelete {
 			action = "CREATE"
 		}
 
-		// Query the PDP
-		if !policy.Evaluate(claims.Role, resource, action) {
-			http.Error(w, fmt.Sprintf("forbidden: PEP denied access to resource '%s' for role '%s'", resource, claims.Role), http.StatusForbidden)
+		// 3. Trích xuất network identity của client (từ Ziti conn hoặc RemoteAddr)
+		conn := GetConnFromContext(r.Context())
+		zitiIdentity := GetZitiIdentity(conn)
+		clientIP := r.RemoteAddr
+		if zitiIdentity != "" {
+			// Khi qua Ziti overlay, RemoteAddr là địa chỉ virtual — dùng Ziti identity thay thế
+			clientIP = zitiIdentity
+		}
+
+		// 4. Xây dựng enriched ABAC context — tất cả attributes này được đánh giá bởi AST evaluator của PDP
+		abacCtx := map[string]string{
+			"ip_address":     clientIP,
+			"request_time":   time.Now().UTC().Format("15:04:05Z"),
+			"http_method":    r.Method,
+			"dpop_jkt":       claims.JKT,      // Device fingerprint — dùng để whitelist thiết bị
+			"ziti_identity":  zitiIdentity,    // Network identity từ OpenZiti
+			"tenant_id":      claims.TenantID,
+			"role":           claims.Role,
+			"scope":          claims.Scope,
+			"token_subject":  claims.Sub,
+		}
+
+		// 5. Gọi gRPC PDP — subject là dạng "role:<role>" để PDP tra cứu trong Trie
+		// Dùng role là subject chính để PDP có thể tra cứu theo Role-based policy
+		subject := fmt.Sprintf("role:%s", claims.Role)
+
+		pdpStart := time.Now()
+		allow, matchedPolicyID, httpStatus, err := m.pdpClient.CheckAccess(
+			r.Context(),
+			claims.TenantID,
+			subject,
+			action,
+			resource,
+			abacCtx,
+		)
+		pdpLatency := time.Since(pdpStart).Microseconds()
+
+		// Ghi nhận latency PDP vào response header để monitoring
+		w.Header().Set("X-Perf-PDP-Verify-Us", fmt.Sprintf("%d", pdpLatency))
+
+		// Ghi nhận vào Prometheus
+		telemetry.RecordPDPOverhead(pdpLatency)
+
+		if err != nil {
+			// Lỗi hạ tầng PDP (timeout, connection refused) — fail-closed
+			http.Error(w, fmt.Sprintf("service_unavailable: policy decision point error: %v", err), httpStatus)
 			return
+		}
+
+		if !allow {
+			// PDP trả DENY
+			msg := fmt.Sprintf("forbidden: PDP denied access to '%s' for subject '%s'", resource, subject)
+			if matchedPolicyID != "" {
+				msg = fmt.Sprintf("%s (matched policy: %s)", msg, matchedPolicyID)
+			}
+			http.Error(w, msg, http.StatusForbidden)
+			return
+		}
+
+		// PDP trả ALLOW — gắn policy ID vào header để audit/debug
+		if matchedPolicyID != "" {
+			w.Header().Set("X-Matched-Policy-Id", matchedPolicyID)
 		}
 
 		next.ServeHTTP(w, r)
